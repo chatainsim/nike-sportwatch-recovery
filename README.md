@@ -182,10 +182,15 @@ read it again with `pull_raw_data_v2.py` instead.
 
 ## Credits
 
-- **Leendert van Duijn & Hristo Dimitrov**, University of Amsterdam SNE
-  (2014), *smartwatches* research project: USB and network captures,
-  decompilation of Nike+ Connect, command opcodes, and the stream reading
-  method — https://github.com/Jurph/sportwatch
+- **Leendert van Duijn & Hristo Dimitrov**, *Information retrieval from a
+  TomTom Nike+ smart watch*, student project of the Security and Network
+  Engineering master (OS3), University of Amsterdam, June 2014: USB and
+  network captures, decompilation of Nike+ Connect, command opcodes, and the
+  stream reading method.
+  Paper: https://www.os3.nl/_media/2013-2014/courses/ccf/smartwatches-hristo-leendert.pdf (the OS3 site currently answers "403 Forbidden";
+  [archived copy](https://web.archive.org/web/20170113075239/https://www.os3.nl/_media/2013-2014/courses/ccf/smartwatches-hristo-leendert.pdf)).
+- **Jurph/sportwatch**, a follow-up project reproducing that paper's results
+  on another watch — https://github.com/Jurph/sportwatch
 - **comsport / nikePlus-SportWatchGPS**, C++ implementation of the USB
   protocol — https://github.com/neklaf/nikePlus-SportWatchGPS
 - The block container, CRC and opcode table were confirmed by analysing

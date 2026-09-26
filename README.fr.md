@@ -193,10 +193,15 @@ encore la montre, relisez-la plutôt avec `pull_raw_data_v2.py`.
 
 ## Crédits
 
-- **Leendert van Duijn et Hristo Dimitrov**, Université d'Amsterdam, SNE
-  (2014), projet de recherche *smartwatches* : captures USB et réseau,
-  décompilation de Nike+ Connect, opcodes des commandes, et méthode de
-  lecture en continu — https://github.com/Jurph/sportwatch
+- **Leendert van Duijn et Hristo Dimitrov**, *Information retrieval from a
+  TomTom Nike+ smart watch*, projet étudiant du master Security and Network
+  Engineering (OS3), Université d'Amsterdam, juin 2014 : captures USB et
+  réseau, décompilation de Nike+ Connect, opcodes des commandes, et méthode
+  de lecture en continu.
+  Mémoire : https://www.os3.nl/_media/2013-2014/courses/ccf/smartwatches-hristo-leendert.pdf (le site d'OS3 répond actuellement « 403 Forbidden » ;
+  [copie archivée](https://web.archive.org/web/20170113075239/https://www.os3.nl/_media/2013-2014/courses/ccf/smartwatches-hristo-leendert.pdf)).
+- **Jurph/sportwatch**, projet qui a repris ce mémoire pour en reproduire
+  les résultats sur une autre montre — https://github.com/Jurph/sportwatch
 - **comsport / nikePlus-SportWatchGPS**, implémentation C++ du protocole
   USB — https://github.com/neklaf/nikePlus-SportWatchGPS
 - Le conteneur de blocs, le CRC et la table d'opcodes ont été confirmés en
