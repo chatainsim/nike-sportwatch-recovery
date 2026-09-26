@@ -17,6 +17,13 @@
   const REPLY_TIMEOUT_MS = 3000;
   const DATA_BYTES = 56; // per full packet: addresses are 56 apart
   const MAX_READ_REQUESTS = 4;
+  // eeprom-erase ("Erase all workout storage data"): 16-bit guard value EE 86,
+  // from the comsport C++ code (captured from Nike+ Connect traffic). Nike+
+  // Connect allowed 20 s for it; the watch may first finish a stream in progress.
+  const OPCODE_EEPROM_ERASE = 0x11;
+  const ERASE_TXID = 0x45;
+  const ERASE_MAGIC = [0xee, 0x86];
+  const ERASE_TIMEOUT_MS = 30000;
   const STREAM_IDLE_MS = 2500;
   const MAX_PACKETS = 40000; // ~2.2 MB, far above what the watch holds
 
@@ -118,7 +125,8 @@
      * from 0 to the packet flagged "last". Missing pieces trigger a new
      * read request.
      */
-    async readMemory(onProgress) {
+    async readMemory(onProgress, { fresh = false } = {}) {
+      if (fresh) this.drain();
       const started = Date.now();
       const byAddr = new Map();
       let lastAddr = null, ignored = 0, duplicates = 0, requests = 0;
@@ -165,6 +173,36 @@
       const packets = [];
       for (let a = 0; a <= lastAddr; a += DATA_BYTES) packets.push(byAddr.get(a));
       return packets;
+    }
+
+    /**
+     * Sends eeprom-erase once and waits for its reply (packets answering
+     * other requests are skipped). Returns the reply, or null on timeout.
+     * The caller must check the result by reading the memory again.
+     */
+    async erase() {
+      const p = command(OPCODE_EEPROM_ERASE, ERASE_TXID, 0x04);
+      p[4] = ERASE_MAGIC[0]; p[5] = ERASE_MAGIC[1];
+      this.verbose = false;
+      await this.send(p);
+      log("erase command sent, waiting up to " + ERASE_TIMEOUT_MS / 1000 + " s for its reply");
+      const deadline = Date.now() + ERASE_TIMEOUT_MS;
+      let skipped = 0;
+      try {
+        while (Date.now() < deadline) {
+          const r = await this.next(deadline - Date.now());
+          if (!r) break;
+          if (r[2] === ERASE_TXID) {
+            log(`erase reply after ${ERASE_TIMEOUT_MS - (deadline - Date.now())} ms (${skipped} other packet(s) skipped): ${hex(r, 16)} … ${hex(r.subarray(r.length - 2), 2)}`);
+            return r;
+          }
+          skipped += 1;
+        }
+        log(`no erase reply within ${ERASE_TIMEOUT_MS / 1000} s (${skipped} other packet(s) skipped)`);
+        return null;
+      } finally {
+        this.verbose = true;
+      }
     }
 
     async close() {

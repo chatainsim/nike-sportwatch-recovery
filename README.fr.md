@@ -26,11 +26,11 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
 
 ## 🌐 Le plus simple : l'appli web (expérimentale)
 
-> ⚠️ **Expérimentale, en cours de test.** L'appli web n'a pour l'instant été
-> testée que contre une montre simulée qui rejoue de vraies données, pas
-> encore avec une vraie montre branchée. Si elle ne fonctionne pas chez
-> vous, utilisez les [outils Python](#outils-python), testés sur le vrai
-> matériel, et ouvrez une issue.
+> ⚠️ **Expérimentale.** La lecture a été confirmée sur une vraie montre
+> (Windows, Chrome) ; les autres configurations ne sont pas testées. Si elle
+> ne fonctionne pas chez vous, utilisez les [outils Python](#outils-python)
+> et ouvrez une issue avec le journal technique de la page (« Afficher le
+> journal technique »).
 
 Ouvrez **https://chatainsim.github.io/nike-sportwatch-recovery/** dans **Chrome ou Edge** sur un ordinateur, posez la montre
 sur son dock, cliquez sur **Connecter la montre**, et téléchargez vos
@@ -39,6 +39,14 @@ décodée dans l'onglet du navigateur (seuls les fonds de carte viennent
 d'OpenStreetMap). La page liste chaque sortie avec sa carte, sa distance, sa
 durée, son allure, ses calories et sa courbe de vitesse, et exporte les GPX
 et les CSV de vitesse, un par un ou tous d'un coup.
+
+Après une lecture complète et vérifiée, la page peut aussi **vider la
+montre** (expérimental : la commande d'effacement n'a pas encore été
+confirmée sur une vraie montre). Il faut d'abord télécharger une sauvegarde
+(GPX, CSV et données brutes) et taper `EFFACER` ; juste avant d'effacer, la
+page vérifie que la montre contient toujours exactement les données
+sauvegardées, envoie la commande une seule fois, puis relit la montre pour
+confirmer qu'elle est vide. Si la montre refuse la commande, rien n'est perdu.
 
 Elle utilise WebHID, que Firefox et Safari ne gèrent pas. La page sait aussi
 ouvrir un fichier `.packets` enregistré par `pull_raw_data_v2.py`.

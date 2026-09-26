@@ -91,6 +91,27 @@
         </div>
       </div>
     </div>
+
+    <div id="erase" class="card erase" hidden>
+      <h3 data-i18n="eraseTitle">Empty the watch (experimental)</h3>
+      <p data-i18n="eraseIntro">Once its memory is full, the watch may stop recording. This erases every run stored on the watch, as Nike+ Connect used to after each sync. It cannot be undone.</p>
+      <p class="note" data-i18n="eraseExperimental">Experimental: the erase command has not been confirmed on a real watch yet. If the watch refuses it, nothing is lost.</p>
+      <ol class="erase-steps">
+        <li>
+          <span data-i18n="eraseStep1">Download the backup (GPX, CSV and raw data of every run):</span>
+          <button id="erase-backup" class="btn small" type="button" data-i18n="eraseBackup">Download the backup (.zip)</button>
+          <span id="erase-backup-ok" class="ok-text"></span>
+        </li>
+        <li>
+          <label for="erase-confirm" id="erase-confirm-label"></label>
+          <input id="erase-confirm" type="text" autocomplete="off" spellcheck="false" disabled>
+        </li>
+        <li>
+          <button id="erase-go" class="btn danger" type="button" disabled data-i18n="eraseGo">Empty the watch</button>
+        </li>
+      </ol>
+      <div id="erase-status" class="erase-status" hidden aria-live="polite"></div>
+    </div>
   </section>
 
   <section class="card faq">

@@ -24,11 +24,10 @@ a phone/smartwatch GPS track recorded at the same time (see
 
 ## 🌐 Easiest way: the web app (experimental)
 
-> ⚠️ **Experimental, being tested.** The web app has so far only been
-> tested against a simulated watch replaying real data, not yet with a real
-> watch plugged in. If it does not work for you, use the
-> [Python tools](#python-tools), which are tested on real hardware, and
-> please open an issue.
+> ⚠️ **Experimental.** Reading has been confirmed on one real watch
+> (Windows, Chrome); other set-ups are untested. If it does not work for
+> you, use the [Python tools](#python-tools) and please open an issue with
+> the page's technical log ("Show technical log").
 
 Open **https://chatainsim.github.io/nike-sportwatch-recovery/** in **Chrome or Edge** on a computer, put the watch on its
 dock, click **Connect the watch**, and download your runs. Nothing to
@@ -36,6 +35,13 @@ install, and nothing is uploaded: the watch is read and decoded inside your
 browser tab (only map backgrounds come from OpenStreetMap). The page lists
 each run with its map, distance, duration, pace, calories and speed chart,
 and exports GPX files and speed CSVs, one by one or all at once.
+
+After a complete, verified read, the page can also **empty the watch**
+(experimental: the erase command has not been confirmed on a real watch yet).
+It requires downloading a backup first (GPX, CSV and raw data), typing
+`ERASE`, checks right before erasing that the watch still holds exactly the
+backed-up data, sends the erase command once, and reads the watch again to
+confirm it is empty. If the watch refuses the command, nothing is lost.
 
 It uses WebHID, which Firefox and Safari do not support. The page can also
 open a `.packets` file saved by `pull_raw_data_v2.py`.

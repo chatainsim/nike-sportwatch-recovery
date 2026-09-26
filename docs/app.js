@@ -66,6 +66,21 @@
       gpx: "GPX", csv: "Speed CSV",
       legend: (max) => `max ${max}`,
       noSpeed: "no speed data",
+      eraseTitle: "Empty the watch (experimental)",
+      eraseIntro: "Once its memory is full, the watch may stop recording. This erases every run stored on the watch, as Nike+ Connect used to after each sync. It cannot be undone.",
+      eraseExperimental: "Experimental: the erase command has not been confirmed on a real watch yet. If the watch refuses it, nothing is lost.",
+      eraseStep1: "Download the backup (GPX, CSV and raw data of every run):",
+      eraseBackup: "Download the backup (.zip)",
+      eraseBackupDone: "Backup downloaded ✓",
+      eraseWord: "ERASE",
+      eraseConfirm: (w) => `Type ${w} to confirm:`,
+      eraseGo: "Empty the watch",
+      eraseChecking: "Checking that the watch still holds exactly the backed-up data…",
+      eraseChanged: "The watch memory changed since the backup (a new run?). Nothing was erased: read the watch again, then start over.",
+      eraseRunning: "Erasing… (up to 30 seconds — do not unplug the watch)",
+      eraseVerifying: "Checking: reading the watch again…",
+      eraseDone: "Done: the watch is empty. Your runs remain listed on this page and in the backup.",
+      eraseFailed: "The watch still holds its runs: it did not erase its memory. Nothing was lost. Please open an issue on GitHub with the technical log.",
       logsShow: "Show technical log", logsHide: "Hide technical log",
       logsHelp: "Everything the page sent to and received from the watch. If something goes wrong, copy it into a GitHub issue. It contains no GPS position.",
       logsCopy: "Copy", logsDownload: "Download (.txt)", logsCopied: "Copied.",
@@ -129,6 +144,21 @@
       gpx: "GPX", csv: "CSV vitesse",
       legend: (max) => `max ${max}`,
       noSpeed: "pas de données de vitesse",
+      eraseTitle: "Vider la montre (expérimental)",
+      eraseIntro: "Une fois sa mémoire pleine, la montre peut cesser d'enregistrer. Ceci efface toutes les sorties enregistrées sur la montre, comme le faisait Nike+ Connect après chaque synchronisation. C'est irréversible.",
+      eraseExperimental: "Expérimental : la commande d'effacement n'a pas encore été confirmée sur une vraie montre. Si la montre la refuse, rien n'est perdu.",
+      eraseStep1: "Téléchargez la sauvegarde (GPX, CSV et données brutes de chaque sortie) :",
+      eraseBackup: "Télécharger la sauvegarde (.zip)",
+      eraseBackupDone: "Sauvegarde téléchargée ✓",
+      eraseWord: "EFFACER",
+      eraseConfirm: (w) => `Tapez ${w} pour confirmer :`,
+      eraseGo: "Vider la montre",
+      eraseChecking: "Vérification que la montre contient toujours exactement les données sauvegardées…",
+      eraseChanged: "La mémoire de la montre a changé depuis la sauvegarde (nouvelle sortie ?). Rien n'a été effacé : relisez la montre, puis recommencez.",
+      eraseRunning: "Effacement… (jusqu'à 30 secondes — ne débranchez pas la montre)",
+      eraseVerifying: "Vérification : nouvelle lecture de la montre…",
+      eraseDone: "Terminé : la montre est vide. Vos sorties restent affichées sur cette page et dans la sauvegarde.",
+      eraseFailed: "La montre contient toujours ses sorties : elle n'a pas effacé sa mémoire. Rien n'est perdu. Ouvrez une issue sur GitHub avec le journal technique.",
       logsShow: "Afficher le journal technique", logsHide: "Masquer le journal technique",
       logsHelp: "Tout ce que la page a envoyé à la montre et reçu d'elle. En cas de problème, copiez-le dans une issue GitHub. Il ne contient aucune position GPS.",
       logsCopy: "Copier", logsDownload: "Télécharger (.txt)", logsCopied: "Copié.",
@@ -148,6 +178,8 @@
     document.title = t("title");
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
     $("logs-btn").textContent = t($("logs").hidden ? "logsShow" : "logsHide");
+    $("erase-confirm-label").textContent = t("eraseConfirm", t("eraseWord"));
+    if (state.backupDone) $("erase-backup-ok").textContent = t("eraseBackupDone");
     document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
     if (state.runs) renderRuns();
   }
@@ -193,7 +225,7 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  const state = { runs: null, selected: 0, packets: null, verify: null, source: null, lastError: null };
+  const state = { runs: null, selected: 0, packets: null, verify: null, source: null, lastError: null, backupDone: false, erased: false };
 
   // ── Status / errors ────────────────────────────────────────────────────────
 
@@ -292,6 +324,7 @@
 
   function showResults(runs, verify, emptyReason) {
     state.runs = runs; state.verify = verify; state.selected = runs.length - 1; state.emptyReason = emptyReason;
+    resetErase();
     $("results").hidden = false;
     renderRuns();
     $("results").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -323,6 +356,8 @@
     $("download-all").hidden = !runs.length;
     $("download-raw").hidden = !state.packets;
     document.querySelector(".layout").hidden = !runs.length;
+    // Erasing is only offered after a complete, verified read of a watch that holds runs.
+    $("erase").hidden = !(state.verify === "ok" && state.packets && runs.length && !state.erased);
 
     const list = $("runs");
     list.replaceChildren();
@@ -445,7 +480,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }
 
-  async function downloadAll() {
+  async function downloadAll({ withRaw = false, name = "nike-sportwatch-runs.zip" } = {}) {
     const runs = state.runs || [];
     if (window.JSZip) {
       const zip = new JSZip();
@@ -453,9 +488,73 @@
         if (r.track.length) zip.file("gpx/" + D.fileStem(r) + ".gpx", D.toGpx(r));
         if (r.samples.length) zip.file("csv/" + D.fileStem(r) + ".csv", D.toCsv(r));
       }
-      download("nike-sportwatch-runs.zip", await zip.generateAsync({ type: "blob" }));
+      if (withRaw && state.packets) zip.file("raw/watch.packets", D.serializePackets(state.packets));
+      download(name, await zip.generateAsync({ type: "blob" }));
     } else {
       for (const r of runs) if (r.track.length) download(D.fileStem(r) + ".gpx", D.toGpx(r), "application/gpx+xml");
+      if (withRaw && state.packets) download("watch.packets", new Blob([D.serializePackets(state.packets)]));
+    }
+  }
+
+  // ── Erasing the watch ──────────────────────────────────────────────────────
+
+  function resetErase() {
+    state.backupDone = false;
+    $("erase-backup-ok").textContent = "";
+    $("erase-confirm").value = "";
+    $("erase-confirm").disabled = true;
+    $("erase-go").disabled = true;
+    $("erase-status").hidden = true;
+  }
+
+  function eraseStatus(text, kind) {
+    const box = $("erase-status");
+    box.hidden = !text;
+    box.className = "erase-status" + (kind ? " " + kind : "");
+    box.replaceChildren(...[].concat(text || []).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
+  }
+
+  const confirmOk = () => $("erase-confirm").value.trim().toUpperCase() === t("eraseWord");
+
+  async function eraseWatch() {
+    if (busy || !state.backupDone || !confirmOk()) return;
+    busy = true;
+    $("erase-go").disabled = true; $("erase-confirm").disabled = true; $("connect").disabled = true;
+    let watch = null;
+    log("ERASE requested by the user");
+    try {
+      watch = await W.connect();
+      eraseStatus(t("eraseChecking"));
+      const now = await watch.readMemory(null, { fresh: true });
+      if (!W.samePackets(now, state.packets)) {
+        log(`memory differs from the backup (${now.length} vs ${state.packets.length} packets): erase cancelled`);
+        eraseStatus(t("eraseChanged"), "bad");
+        return;
+      }
+      eraseStatus(t("eraseRunning"));
+      await watch.erase();
+      await new Promise((r) => setTimeout(r, 2000));
+      eraseStatus(t("eraseVerifying"));
+      const after = D.payloadStream(await watch.readMemory(null, { fresh: true }));
+      logStream(after);
+      const stillThere = D.findBlocks(after).some((b) => b.cls === 2 || b.cls === 4);
+      if (stillThere) {
+        log("watch still holds workout data after the erase command");
+        eraseStatus([t("eraseFailed")], "bad");
+      } else {
+        log("watch is empty after the erase command");
+        state.erased = true;
+        eraseStatus(t("eraseDone"), "ok");
+        $("download-raw").hidden = false;
+      }
+    } catch (err) {
+      console.error(err);
+      log(`erase exception: ${err && err.name}: ${err && (err.code || err.message)}`);
+      eraseStatus(explain(err).concat([t("seeLogs")]), "bad");
+    } finally {
+      if (watch) { await watch.close(); log("device closed"); }
+      busy = false; $("connect").disabled = false;
+      if (!state.erased) { $("erase-confirm").disabled = !state.backupDone; $("erase-go").disabled = !(state.backupDone && confirmOk()); }
     }
   }
 
@@ -478,7 +577,18 @@
     download(`nike-sportwatch-log_${stamp}.txt`, logLines.join("\n") + "\n", "text/plain");
   });
   $("file").addEventListener("change", (e) => { readFile(e.target.files[0]); e.target.value = ""; });
-  $("download-all").addEventListener("click", downloadAll);
+  $("download-all").addEventListener("click", () => downloadAll());
+  $("erase-backup").addEventListener("click", async () => {
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    await downloadAll({ withRaw: true, name: `nike-sportwatch-backup_${stamp}.zip` });
+    state.backupDone = true;
+    log("backup zip downloaded (GPX, CSV, raw packets)");
+    $("erase-backup-ok").textContent = t("eraseBackupDone");
+    $("erase-confirm").disabled = false;
+    $("erase-confirm").focus();
+  });
+  $("erase-confirm").addEventListener("input", () => { $("erase-go").disabled = !(state.backupDone && confirmOk() && !busy); });
+  $("erase-go").addEventListener("click", eraseWatch);
   $("download-raw").addEventListener("click", () => {
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     download(`nike_watch_${stamp}.packets`, new Blob([D.serializePackets(state.packets)]));
