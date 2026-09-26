@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+# Your data: exact GPS locations, keep it out of the repository
+*.packets
+*.bin
+gpx/
+sessions/
