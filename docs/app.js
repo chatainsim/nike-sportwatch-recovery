@@ -37,7 +37,7 @@
       faq4q: "Heart rate and steps are missing",
       faq4a: "Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.",
       faq5q: "Is it safe for the watch?",
-      faq5a: "Yes: the page only sends read commands (firmware version, read runs). Nothing is erased or written, and you can read the watch as often as you like.",
+      faq5a: "Yes: the page only sends the command that reads the runs. Nothing is erased or written, and you can read the watch as often as you like.",
       footer1: "Open source project, not affiliated with Nike or TomTom.",
       footer2: "Built with",
       // dynamic
@@ -58,6 +58,7 @@
       eOpenLinux: "On Linux, the browser also needs permission: add a udev rule for vendor 11ac, product 5455.",
       eTimeout: "The watch did not answer. Check that it sits properly on the dock, unplug and replug the dock, then try again.",
       eFile: "This file could not be read. Expected a .packets file (from this page or pull_raw_data_v2.py) or a raw memory .bin.",
+      eIncomplete: "The watch sent only part of its memory, even after several requests. Unplug the dock, plug it back in, and try again.",
       eGeneric: "Something went wrong:",
       eHelp: "If it keeps failing, please open an issue on GitHub with this message.",
       dist: "Distance", dur: "Duration", pace: "Avg. pace", kcal: "Calories",
@@ -100,7 +101,7 @@
       faq4q: "Il manque le cardio et les pas",
       faq4a: "Ces formats ne sont pas encore décodés : aucune ceinture cardio ni capteur de foulée n'était appairé sur la montre qui a servi à créer cet outil. Si vous avez des sorties avec, contactez-nous sur GitHub.",
       faq5q: "Est-ce sans risque pour la montre ?",
-      faq5a: "Oui : la page n'envoie que des commandes de lecture (version du firmware, lecture des sorties). Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
+      faq5a: "Oui : la page n'envoie que la commande de lecture des sorties. Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
       footer1: "Projet open source, sans lien avec Nike ou TomTom.",
       footer2: "Réalisé avec",
       sConnecting: "Connexion à la montre…",
@@ -120,6 +121,7 @@
       eOpenLinux: "Sous Linux, le navigateur a aussi besoin d'une autorisation : ajoutez une règle udev pour le vendor 11ac, product 5455.",
       eTimeout: "La montre ne répond pas. Vérifiez qu'elle est bien posée sur le dock, débranchez et rebranchez le dock, puis réessayez.",
       eFile: "Ce fichier n'a pas pu être lu. Il faut un fichier .packets (de cette page ou de pull_raw_data_v2.py) ou un .bin de mémoire brute.",
+      eIncomplete: "La montre n'a envoyé qu'une partie de sa mémoire, même après plusieurs demandes. Débranchez le dock, rebranchez-le et réessayez.",
       eGeneric: "Une erreur s'est produite :",
       eHelp: "Si ça continue, ouvrez une issue sur GitHub avec ce message.",
       dist: "Distance", dur: "Durée", pace: "Allure moy.", kcal: "Calories",
@@ -218,6 +220,7 @@
     if (code === "unsupported") return [t("eUnsupported")];
     if (code === "cancelled") return [t("eCancelled")];
     if (code === "timeout") return [t("eTimeout")];
+    if (code === "incomplete") return [t("eIncomplete")];
     if (code === "open") return [t("eOpen"), /Linux/.test(navigator.userAgent) ? t("eOpenLinux") : null];
     return [t("eGeneric") + " " + (err && (err.message || err)), t("eHelp")];
   }
@@ -233,14 +236,12 @@
     try {
       setStatus(t("sConnecting"));
       watch = await W.connect();
-      setStatus(t("sChecking"));
-      await watch.version();
       // The expected size is unknown before the first read: indeterminate bar.
       let expected = null;
       const reads = [];
       for (const pass of [1, 2]) {
         log(`read ${pass}/2 started`);
-        const packets = await watch.readWorkouts((n) => setStatus(t("sReading", n, pass), expected ? Math.min(1, n / expected) : null));
+        const packets = await watch.readMemory((n, total) => setStatus(t("sReading", n, pass), total ? Math.min(1, n / total) : expected ? Math.min(1, n / expected) : null));
         reads.push(packets);
         expected = packets.length;
       }

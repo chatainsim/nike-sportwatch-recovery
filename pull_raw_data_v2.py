@@ -60,6 +60,7 @@ OPCODE_READ_WORKOUTS = 0x10
 MAX_PACKETS = 5000
 
 V1_HEADER = 7
+READ_TXID = 0x96
 
 
 def packet_payload(packet: bytes) -> bytes:
@@ -188,8 +189,20 @@ def load_packets(path: str) -> list[bytes]:
 # ── Analysis (also usable offline) ───────────────────────────────────────────
 
 def payload_stream(packets: list[bytes]) -> bytes:
-    """Data stream: each packet's payload, delimited by its length byte."""
-    return b"".join(packet_payload(p) for p in packets if len(p) > V1_HEADER)
+    """Data stream: each packet's payload, delimited by its length byte.
+
+    Packets answering a workout read (txid 0x96) carry their memory address
+    (bytes 4-6, big-endian): they are filed by address and duplicates are
+    dropped, so a read that caught the tail of an earlier stream, or two
+    overlapping streams, still gives the memory in order. Other packets are
+    ignored."""
+    reads = [p for p in packets if len(p) > V1_HEADER and p[2] == READ_TXID]
+    if not reads:
+        return b"".join(packet_payload(p) for p in packets if len(p) > V1_HEADER)
+    by_addr = {}
+    for p in reads:
+        by_addr.setdefault((p[4] << 16) | (p[5] << 8) | p[6], p)
+    return b"".join(packet_payload(by_addr[a]) for a in sorted(by_addr))
 
 
 def describe(packets: list[bytes], label: str) -> None:

@@ -21,8 +21,23 @@
     return p.subarray(HEADER, p.length - 1);
   }
 
+  /**
+   * Packets answering a workout read (txid 0x96) carry their memory address
+   * (bytes 4-6, big-endian): they are filed by address, duplicates dropped,
+   * so overlapping or out-of-order streams still give the memory in order.
+   */
   function payloadStream(packets) {
-    const parts = packets.filter((p) => p.length > HEADER).map(packetPayload);
+    const reads = packets.filter((p) => p.length > HEADER && p[2] === 0x96);
+    let ordered = packets.filter((p) => p.length > HEADER);
+    if (reads.length) {
+      const byAddr = new Map();
+      for (const p of reads) {
+        const addr = (p[4] << 16) | (p[5] << 8) | p[6];
+        if (!byAddr.has(addr)) byAddr.set(addr, p);
+      }
+      ordered = [...byAddr.keys()].sort((a, b) => a - b).map((a) => byAddr.get(a));
+    }
+    const parts = ordered.map(packetPayload);
     const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
     let o = 0;
     for (const p of parts) { out.set(p, o); o += p.length; }

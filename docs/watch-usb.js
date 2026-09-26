@@ -2,11 +2,9 @@
  * Talking to the Nike+ SportWatch GPS from the browser, with WebHID
  * (Chrome, Edge, and other Chromium browsers on desktop).
  *
- * Same method as pull_raw_data_v2.py, validated on real hardware: drain
- * pending reports, send ONE read-workouts request, then collect everything
- * the watch streams until it signals the last packet or goes quiet.
- * Read-only: only the version (0x08) and read-workouts (0x10) commands are
- * ever sent.
+ * One read-workouts request, then everything the watch streams is filed by
+ * memory address until the memory is complete (see readMemory). Read-only:
+ * the read-workouts command (0x10) is the only one ever sent.
  */
 (function (root) {
   "use strict";
@@ -15,9 +13,10 @@
   const PRODUCT_ID = 0x5455;
   const REPORT_SIZE = 64;
   const OUT_REPORT_ID = 0x09;
-  const OPCODE_VERSION = 0x08;
   const OPCODE_READ_WORKOUTS = 0x10;
   const REPLY_TIMEOUT_MS = 3000;
+  const DATA_BYTES = 56; // per full packet: addresses are 56 apart
+  const MAX_READ_REQUESTS = 4;
   const STREAM_IDLE_MS = 2500;
   const MAX_PACKETS = 40000; // ~2.2 MB, far above what the watch holds
 
@@ -107,41 +106,64 @@
       return reply;
     }
 
-    async version() {
-      const r = await this.request(command(OPCODE_VERSION, 0x29));
-      return String.fromCharCode(r[3]) + (r[4] | (r[5] << 8));
-    }
-
-    /** All workout packets, streamed after a single request. */
-    async readWorkouts(onProgress) {
-      // Late replies to an earlier command can still arrive: let them come in
-      // and drop them, and below only keep packets answering this request.
-      await new Promise((r) => setTimeout(r, 500));
-      this.drain();
+    /**
+     * The whole workout memory, as packets ordered by address.
+     *
+     * Every data packet carries its memory address (bytes 4-6, big-endian,
+     * 56 bytes apart). The watch may already be streaming when the page
+     * connects (a read left over from before), and it answers commands one
+     * after the other, so the packets that arrive are not necessarily the
+     * start of our read. They are therefore filed by address, whatever
+     * stream they come from, until the memory is complete: every address
+     * from 0 to the packet flagged "last". Missing pieces trigger a new
+     * read request.
+     */
+    async readMemory(onProgress) {
       const started = Date.now();
+      const byAddr = new Map();
+      let lastAddr = null, ignored = 0, duplicates = 0, requests = 0;
+      const needed = () => (lastAddr === null ? null : lastAddr / DATA_BYTES + 1);
+      const complete = () => {
+        if (lastAddr === null) return false;
+        for (let a = 0; a <= lastAddr; a += DATA_BYTES) if (!byAddr.has(a)) return false;
+        return true;
+      };
       this.verbose = false;
       this.received = 0;
-      await this.send(command(OPCODE_READ_WORKOUTS, READ_TXID, 0x05));
-      const packets = [];
-      let ignored = 0, stop = "idle";
-      while (packets.length < MAX_PACKETS) {
-        const p = await this.next(packets.length ? STREAM_IDLE_MS : REPLY_TIMEOUT_MS);
-        if (!p) break;
-        if (p[2] !== READ_TXID) {
-          ignored += 1;
-          log(`ignored packet not answering the read: txid=${hex(p.subarray(2, 3), 1)} more=${p[3]} | ${hex(p, 16)}`);
-          continue;
+      const pending = this.queue.length;
+      if (pending) log(`${pending} packet(s) already waiting before the read: kept and filed by address`);
+      while (!complete() && requests < MAX_READ_REQUESTS) {
+        requests += 1;
+        await this.send(command(OPCODE_READ_WORKOUTS, READ_TXID, 0x05));
+        log(`read request ${requests} sent (have ${byAddr.size} packets${lastAddr !== null ? ", need " + needed() : ""})`);
+        while (!complete()) {
+          const p = await this.next(byAddr.size ? STREAM_IDLE_MS : REPLY_TIMEOUT_MS);
+          if (!p) { log(`no packet for ${byAddr.size ? STREAM_IDLE_MS : REPLY_TIMEOUT_MS} ms`); break; }
+          if (p[2] !== READ_TXID || p.length < 8) {
+            ignored += 1;
+            log(`ignored packet not answering a read: txid=${hex(p.subarray(2, 3), 1)} | ${hex(p, 16)}`);
+            continue;
+          }
+          const addr = (p[4] << 16) | (p[5] << 8) | p[6];
+          if (byAddr.has(addr)) duplicates += 1; else byAddr.set(addr, p);
+          if (p[3] === 0) {
+            if (lastAddr !== null && addr !== lastAddr) log(`WARNING: two different "last" packets: ${lastAddr} and ${addr}`);
+            lastAddr = Math.max(lastAddr ?? 0, addr);
+          }
+          if (onProgress) onProgress(byAddr.size, needed());
         }
-        packets.push(p);
-        if (onProgress) onProgress(packets.length);
-        if (p[3] === 0) { stop = "last-packet flag"; break; }
       }
-      const bytes = packets.reduce((n, p) => n + Math.max(0, (p[1] || 0) - 5), 0);
-      const last = packets[packets.length - 1];
-      log(`read done: ${packets.length} packets (~${bytes} data bytes), ${ignored} ignored, stopped on ${packets.length >= MAX_PACKETS ? "size cap" : stop}, ${Date.now() - started} ms` +
-          (last ? `, last addr=${hex(last.subarray(4, 7), 3)}` : ""));
+      const missing = [];
+      if (lastAddr !== null) for (let a = 0; a <= lastAddr; a += DATA_BYTES) if (!byAddr.has(a)) missing.push(a);
+      log(`read done: ${byAddr.size} distinct packets, ${duplicates} duplicates, ${ignored} ignored, ${requests} request(s), ` +
+          `last packet at ${lastAddr === null ? "not seen" : "0x" + lastAddr.toString(16)}, ${missing.length} missing, ${Date.now() - started} ms`);
       this.verbose = true;
-      if (!packets.length) throw new WatchError("timeout");
+      if (!complete()) {
+        if (missing.length) log(`missing addresses: ${missing.slice(0, 20).map((a) => "0x" + a.toString(16)).join(", ")}${missing.length > 20 ? " …" : ""}`);
+        throw new WatchError(byAddr.size ? "incomplete" : "timeout");
+      }
+      const packets = [];
+      for (let a = 0; a <= lastAddr; a += DATA_BYTES) packets.push(byAddr.get(a));
       return packets;
     }
 
