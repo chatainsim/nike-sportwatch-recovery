@@ -65,6 +65,11 @@
       gpx: "GPX", csv: "Speed CSV",
       legend: (max) => `max ${max}`,
       noSpeed: "no speed data",
+      logsShow: "Show technical log", logsHide: "Hide technical log",
+      logsHelp: "Everything the page sent to and received from the watch. If something goes wrong, copy it into a GitHub issue. It contains no GPS position.",
+      logsCopy: "Copy", logsDownload: "Download (.txt)", logsCopied: "Copied.",
+      emptyHint: "If you know the watch holds runs, open the technical log below and attach it to a GitHub issue.",
+      seeLogs: "The technical log below (“Show technical log”) tells what happened: please attach it to a GitHub issue.",
     },
     fr: {
       title: "Nike+ SportWatch GPS — récupérez vos sorties",
@@ -122,6 +127,11 @@
       gpx: "GPX", csv: "CSV vitesse",
       legend: (max) => `max ${max}`,
       noSpeed: "pas de données de vitesse",
+      logsShow: "Afficher le journal technique", logsHide: "Masquer le journal technique",
+      logsHelp: "Tout ce que la page a envoyé à la montre et reçu d'elle. En cas de problème, copiez-le dans une issue GitHub. Il ne contient aucune position GPS.",
+      logsCopy: "Copier", logsDownload: "Télécharger (.txt)", logsCopied: "Copié.",
+      emptyHint: "Si vous savez que la montre contient des sorties, affichez le journal technique ci-dessous et joignez-le à une issue GitHub.",
+      seeLogs: "Le journal technique ci-dessous (« Afficher le journal technique ») explique ce qui s'est passé : joignez-le à une issue GitHub.",
     },
   };
 
@@ -135,8 +145,48 @@
     document.documentElement.lang = lang;
     document.title = t("title");
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    $("logs-btn").textContent = t($("logs").hidden ? "logsShow" : "logsHide");
     document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
     if (state.runs) renderRuns();
+  }
+
+  // ── Technical log ──────────────────────────────────────────────────────────
+
+  const logLines = [];
+  const t0 = performance.now();
+  function log(msg) {
+    const line = `[${((performance.now() - t0) / 1000).toFixed(3).padStart(8)} s] ${msg}`;
+    logLines.push(line);
+    if (logLines.length > 5000) logLines.splice(0, logLines.length - 5000);
+    const pre = $("logs-text");
+    if (pre && !$("logs").hidden) { pre.textContent = logLines.join("\n"); pre.scrollTop = pre.scrollHeight; }
+  }
+  W.setLogger(log);
+  log(`page loaded — ${navigator.userAgent}`);
+  log(`WebHID available: ${W.supported()}`);
+
+  function toggleLogs(show) {
+    const panel = $("logs");
+    panel.hidden = show === undefined ? !panel.hidden : !show;
+    $("logs-btn").setAttribute("aria-expanded", String(!panel.hidden));
+    $("logs-btn").textContent = t(panel.hidden ? "logsShow" : "logsHide");
+    if (!panel.hidden) { $("logs-text").textContent = logLines.join("\n"); $("logs-text").scrollTop = $("logs-text").scrollHeight; }
+  }
+
+  /** What the decoder found, for the log. */
+  function logStream(stream) {
+    const blocks = D.findBlocks(stream);
+    const byClass = {};
+    for (const b of blocks) {
+      const k = `class ${b.cls}`;
+      byClass[k] = byClass[k] || {};
+      byClass[k][b.payload.length] = (byClass[k][b.payload.length] || 0) + 1;
+    }
+    const covered = blocks.reduce((n, b) => n + b.payload.length + 4, 0);
+    log(`decoded stream: ${stream.length} bytes, ${blocks.length} CRC blocks (${stream.length ? Math.round(100 * covered / stream.length) : 0}% covered)`);
+    for (const [k, sizes] of Object.entries(byClass)) {
+      log(`  ${k}: ` + Object.entries(sizes).map(([len, n]) => `${n}×${len}B`).join(", "));
+    }
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -154,6 +204,8 @@
   }
 
   function showError(messages) {
+    log("ERROR shown: " + messages.filter(Boolean).join(" / "));
+    messages = messages.concat([t("seeLogs")]);
     const box = $("error");
     box.replaceChildren(...messages.filter(Boolean).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
     box.hidden = false;
@@ -187,19 +239,22 @@
       let expected = null;
       const reads = [];
       for (const pass of [1, 2]) {
+        log(`read ${pass}/2 started`);
         const packets = await watch.readWorkouts((n) => setStatus(t("sReading", n, pass), expected ? Math.min(1, n / expected) : null));
         reads.push(packets);
         expected = packets.length;
       }
       setStatus(t("sDecoding"));
       const identical = W.samePackets(reads[0], reads[1]);
+      log(`reads identical: ${identical} (${reads[0].length} vs ${reads[1].length} packets)`);
       state.packets = reads[0];
       decodeAndShow(D.payloadStream(reads[0]), identical ? "ok" : "diff");
     } catch (err) {
       console.error(err);
+      log(`exception: ${err && err.name}: ${err && (err.code || err.message)}${err && err.cause ? " / cause: " + err.cause : ""}`);
       showError(explain(err));
     } finally {
-      if (watch) await watch.close();
+      if (watch) { await watch.close(); log("device closed"); }
       busy = false; $("connect").disabled = false;
     }
   }
@@ -210,18 +265,22 @@
     try {
       setStatus(t("sFile", file.name));
       const buf = new Uint8Array(await file.arrayBuffer());
+      log(`file opened: ${file.name}, ${buf.length} bytes`);
       const stream = file.name.toLowerCase().endsWith(".packets") ? D.payloadStream(D.parsePacketsFile(buf)) : buf;
       if (!stream.length) throw new Error("empty");
       state.packets = null;
       decodeAndShow(stream, "file:" + file.name);
     } catch (err) {
       console.error(err);
+      log(`file error: ${err && err.message}`);
       showError([t("eFile")]);
     }
   }
 
   function decodeAndShow(stream, verify) {
+    logStream(stream);
     const runs = D.decodeRuns(stream);
+    log(`runs decoded: ${runs.length}` + runs.map((r) => ` | ${new Date(r.start * 1000).toISOString()} ${r.track.length} GPS pts, ${r.samples.length} speed samples, calories ${r.calories}`).join(""));
     // An empty (erased) watch only returns a device-info block (class 1).
     const hasWorkoutData = D.findBlocks(stream).some((b) => b.cls === 2 || b.cls === 4);
     setStatus(null);
@@ -254,7 +313,8 @@
     $("results-title").textContent = state.emptyReason === "empty" ? t("empty") : t("runsFound", runs.length);
     const note = $("verify-note");
     note.className = "note";
-    if (state.emptyReason === "noRuns") note.textContent = t("noRuns");
+    if (state.emptyReason === "noRuns") note.textContent = t("noRuns") + " " + t("emptyHint");
+    else if (state.emptyReason === "empty" && state.verify && !state.verify.startsWith("file:")) note.textContent = t("emptyHint");
     else if (state.verify === "ok") { note.textContent = t("verifyOk"); note.classList.add("ok"); }
     else if (state.verify === "diff") note.textContent = t("verifyDiff");
     else if (state.verify && state.verify.startsWith("file:")) note.textContent = t("verifyFile", state.verify.slice(5));
@@ -406,6 +466,16 @@
     applyLang();
   }));
   $("connect").addEventListener("click", readWatch);
+  $("logs-btn").addEventListener("click", () => toggleLogs());
+  $("logs-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(logLines.join("\n")); $("logs-copied").textContent = t("logsCopied"); }
+    catch (_) { const r = document.createRange(); r.selectNodeContents($("logs-text")); getSelection().removeAllRanges(); getSelection().addRange(r); }
+    setTimeout(() => { $("logs-copied").textContent = ""; }, 2500);
+  });
+  $("logs-download").addEventListener("click", () => {
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    download(`nike-sportwatch-log_${stamp}.txt`, logLines.join("\n") + "\n", "text/plain");
+  });
   $("file").addEventListener("change", (e) => { readFile(e.target.files[0]); e.target.value = ""; });
   $("download-all").addEventListener("click", downloadAll);
   $("download-raw").addEventListener("click", () => {

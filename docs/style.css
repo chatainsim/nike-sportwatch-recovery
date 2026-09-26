@@ -92,6 +92,15 @@ main { padding-block: 24px 8px; display: grid; gap: 24px; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .error { margin-top: 16px; background: var(--err-bg); border: 1px solid var(--err-line); border-radius: 10px; padding: 12px 14px; }
 .error p { margin: 4px 0; }
+.logs-toggle { margin-top: 14px; }
+.linklike { background: none; border: 0; padding: 0; font: inherit; font-size: .88rem; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.logs { margin-top: 10px; }
+.logs-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+#logs-text {
+  margin: 0; max-height: 360px; overflow: auto; padding: 12px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--line);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre;
+}
 
 .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .results-head h2 { margin: 0; }

@@ -52,6 +52,19 @@
       <div class="bar"><div id="bar-fill"></div></div>
     </div>
     <div id="error" class="error" hidden role="alert"></div>
+
+    <div class="logs-toggle">
+      <button id="logs-btn" class="linklike" type="button" aria-expanded="false" aria-controls="logs" data-i18n="logsShow">Show technical log</button>
+    </div>
+    <div id="logs" class="logs" hidden>
+      <p class="note" data-i18n="logsHelp">Everything the page sent to and received from the watch. If something goes wrong, copy it into a GitHub issue. It contains no GPS position.</p>
+      <div class="logs-actions">
+        <button id="logs-copy" class="btn small" type="button" data-i18n="logsCopy">Copy</button>
+        <button id="logs-download" class="btn small" type="button" data-i18n="logsDownload">Download (.txt)</button>
+        <span id="logs-copied" class="muted" aria-live="polite"></span>
+      </div>
+      <pre id="logs-text"></pre>
+    </div>
   </section>
 
   <section id="results" hidden>
