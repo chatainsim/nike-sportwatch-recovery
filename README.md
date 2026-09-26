@@ -192,6 +192,14 @@ read it again with `pull_raw_data_v2.py` instead.
   Nike+ Connect's `SportWatchPlugin.dll`. The software itself is not
   distributed here.
 
+## How this was made
+
+This whole project was built with [Claude Code](https://claude.com/claude-code),
+Anthropic's AI coding assistant: the reverse engineering of the USB protocol
+and of the GPS and telemetry formats, the tools, and this documentation. The
+watch owner handled everything that needed the hardware: running the reader
+on the watch, and recording the reference run alongside a second GPS device.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

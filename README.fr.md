@@ -203,6 +203,15 @@ encore la montre, relisez-la plutôt avec `pull_raw_data_v2.py`.
   analysant `SportWatchPlugin.dll`, du logiciel Nike+ Connect. Le logiciel
   lui-même n'est pas distribué ici.
 
+## Comment ce projet a été fait
+
+Tout ce projet a été réalisé avec [Claude Code](https://claude.com/claude-code),
+l'assistant de programmation IA d'Anthropic : la rétro-ingénierie du
+protocole USB et des formats GPS et télémétrie, les outils et cette
+documentation. Le propriétaire de la montre s'est chargé de tout ce qui
+demandait le matériel : lancer le lecteur sur la montre, et enregistrer la
+sortie de référence avec un second appareil GPS.
+
 ## Licence
 
 MIT — voir [LICENSE](LICENSE).
