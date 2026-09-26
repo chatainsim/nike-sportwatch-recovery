@@ -37,7 +37,7 @@
       faq4q: "Heart rate and steps are missing",
       faq4a: "Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.",
       faq5q: "Is it safe for the watch?",
-      faq5a: "Yes: the page only sends read commands (version, memory status, read runs). Nothing is erased or written, and you can read the watch as often as you like.",
+      faq5a: "Yes: the page only sends read commands (firmware version, read runs). Nothing is erased or written, and you can read the watch as often as you like.",
       footer1: "Open source project, not affiliated with Nike or TomTom.",
       footer2: "Built with",
       // dynamic
@@ -95,7 +95,7 @@
       faq4q: "Il manque le cardio et les pas",
       faq4a: "Ces formats ne sont pas encore décodés : aucune ceinture cardio ni capteur de foulée n'était appairé sur la montre qui a servi à créer cet outil. Si vous avez des sorties avec, contactez-nous sur GitHub.",
       faq5q: "Est-ce sans risque pour la montre ?",
-      faq5a: "Oui : la page n'envoie que des commandes de lecture (version, état de la mémoire, lecture des sorties). Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
+      faq5a: "Oui : la page n'envoie que des commandes de lecture (version du firmware, lecture des sorties). Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
       footer1: "Projet open source, sans lien avec Nike ou TomTom.",
       footer2: "Réalisé avec",
       sConnecting: "Connexion à la montre…",
@@ -183,7 +183,6 @@
       watch = await W.connect();
       setStatus(t("sChecking"));
       await watch.version();
-      if (!(await watch.hasData())) { setStatus(null); showResults([], null, "empty"); return; }
       // The expected size is unknown before the first read: indeterminate bar.
       let expected = null;
       const reads = [];
@@ -223,8 +222,10 @@
 
   function decodeAndShow(stream, verify) {
     const runs = D.decodeRuns(stream);
+    // An empty (erased) watch only returns a device-info block (class 1).
+    const hasWorkoutData = D.findBlocks(stream).some((b) => b.cls === 2 || b.cls === 4);
     setStatus(null);
-    showResults(runs, verify, runs.length ? null : "noRuns");
+    showResults(runs, verify, runs.length ? null : hasWorkoutData ? "noRuns" : "empty");
   }
 
   // ── Results ────────────────────────────────────────────────────────────────

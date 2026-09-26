@@ -5,8 +5,8 @@
  * Same method as pull_raw_data_v2.py, validated on real hardware: drain
  * pending reports, send ONE read-workouts request, then collect everything
  * the watch streams until it signals the last packet or goes quiet.
- * Read-only: only the version (0x08), eeprom-query (0x12) and read-workouts
- * (0x10) commands are ever sent.
+ * Read-only: only the version (0x08) and read-workouts (0x10) commands are
+ * ever sent.
  */
 (function (root) {
   "use strict";
@@ -16,7 +16,6 @@
   const REPORT_SIZE = 64;
   const OUT_REPORT_ID = 0x09;
   const OPCODE_VERSION = 0x08;
-  const OPCODE_EEPROM_QUERY = 0x12;
   const OPCODE_READ_WORKOUTS = 0x10;
   const REPLY_TIMEOUT_MS = 3000;
   const STREAM_IDLE_MS = 2500;
@@ -87,11 +86,6 @@
     async version() {
       const r = await this.request(command(OPCODE_VERSION, 0x29));
       return String.fromCharCode(r[3]) + (r[4] | (r[5] << 8));
-    }
-
-    async hasData() {
-      const r = await this.request(command(OPCODE_EEPROM_QUERY, 0xbb));
-      return r[7] > 0 || r[8] > 0;
     }
 
     /** All workout packets, streamed after a single request. */
