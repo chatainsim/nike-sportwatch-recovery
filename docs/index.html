@@ -57,10 +57,11 @@
       <button id="logs-btn" class="linklike" type="button" aria-expanded="false" aria-controls="logs" data-i18n="logsShow">Show technical log</button>
     </div>
     <div id="logs" class="logs" hidden>
-      <p class="note" data-i18n="logsHelp">Everything the page sent to and received from the watch. If something goes wrong, copy it into a GitHub issue. It contains no GPS position.</p>
+      <p class="note" data-i18n="logsHelp">Everything the page sent to and received from the watch. If something goes wrong, attach it to an issue on the GitHub repository. It contains no GPS position.</p>
       <div class="logs-actions">
         <button id="logs-copy" class="btn small" type="button" data-i18n="logsCopy">Copy</button>
         <button id="logs-download" class="btn small" type="button" data-i18n="logsDownload">Download (.txt)</button>
+        <a class="btn small" href="https://github.com/chatainsim/nike-sportwatch-recovery/issues" target="_blank" rel="noopener" data-i18n="logsIssue">Open an issue on GitHub</a>
         <span id="logs-copied" class="muted" aria-live="polite"></span>
       </div>
       <pre id="logs-text"></pre>
@@ -127,6 +128,7 @@
 <footer class="wrap footer">
   <p><span data-i18n="footer1">Open source project, not affiliated with Nike or TomTom.</span>
      <a href="https://github.com/chatainsim/nike-sportwatch-recovery">GitHub</a> ·
+     <a href="https://github.com/chatainsim/nike-sportwatch-recovery/issues" data-i18n="footerIssues">Report a problem</a> ·
      <span data-i18n="footer2">Built with</span> <a href="https://claude.com/claude-code">Claude Code</a>.</p>
 </footer>
 

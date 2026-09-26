@@ -26,8 +26,8 @@ a phone/smartwatch GPS track recorded at the same time (see
 
 > ⚠️ **Experimental.** Reading has been confirmed on one real watch
 > (Windows, Chrome); other set-ups are untested. If it does not work for
-> you, use the [Python tools](#python-tools) and please open an issue with
-> the page's technical log ("Show technical log").
+> you, use the [Python tools](#python-tools) and please [open an issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) with the
+> page's technical log ("Show technical log").
 
 Open **https://chatainsim.github.io/nike-sportwatch-recovery/** in **Chrome or Edge** on a computer, put the watch on its
 dock, click **Connect the watch**, and download your runs. Nothing to
@@ -84,7 +84,7 @@ Linux this usually means running as root or adding a udev rule for vendor
 (it only contains a shortcut to Nike's website): ignore it.
 
 **If reading fails**, `python pull_raw_data_v2.py --analyze "nike_v2_*.packets"`
-summarises what was received. Please open an issue with that output — but do
+summarises what was received. Please [open an issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) with that output — but do
 not attach the `.packets` files publicly, since they contain your locations.
 
 ## What gets recovered
@@ -101,6 +101,22 @@ not attach the `.packets` files publicly, since they contain your locations.
 The watch clock can drift or be wrong: for the date and time of a run, trust
 the GPS timestamps (used in the GPX) over the watch-clock times printed by
 `decode_telemetry.py`.
+
+## Problems? Open an issue
+
+If something does not work — the watch is not found, a read is incomplete,
+a run is missing or looks wrong, the erase fails — please
+**[open an issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues)** on this repository. Include:
+
+- your operating system and browser (or Python version);
+- for the web app: the technical log (**Show technical log**, then **Copy**
+  or **Download**) — it contains no GPS position;
+- for the Python tools: the console output, and `--analyze` output if a read
+  looks wrong.
+
+Do not attach `.packets`, `.bin`, GPX or CSV files publicly: they contain
+the exact locations of your runs. Say in the issue that you have them, and
+they can be shared privately if needed.
 
 ## How it works
 

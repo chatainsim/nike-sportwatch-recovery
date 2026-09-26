@@ -4,6 +4,7 @@
   const D = window.NikeDecoder;
   const W = window.NikeWatch;
   const $ = (id) => document.getElementById(id);
+  const ISSUES_URL = "https://github.com/chatainsim/nike-sportwatch-recovery/issues";
 
   // ── Texts ──────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@
       eFile: "This file could not be read. Expected a .packets file (from this page or pull_raw_data_v2.py) or a raw memory .bin.",
       eIncomplete: "The watch sent only part of its memory, even after several requests. Unplug the dock, plug it back in, and try again.",
       eGeneric: "Something went wrong:",
-      eHelp: "If it keeps failing, please open an issue on GitHub with this message.",
+      eHelp: "If it keeps failing, please report it (link below).",
       dist: "Distance", dur: "Duration", pace: "Avg. pace", kcal: "Calories",
       noGpsBadge: "no GPS", incomplete: "end not recorded", watchClock: "date from the watch clock",
       gpx: "GPX", csv: "Speed CSV",
@@ -80,12 +81,16 @@
       eraseRunning: "Erasing… (up to 30 seconds — do not unplug the watch)",
       eraseVerifying: "Checking: reading the watch again…",
       eraseDone: "Done: the watch is empty. Your runs remain listed on this page and in the backup.",
-      eraseFailed: "The watch still holds its runs: it did not erase its memory. Nothing was lost. Please open an issue on GitHub with the technical log.",
+      eraseFailed: "The watch still holds its runs: it did not erase its memory. Nothing was lost. Please report it (link below) with the technical log.",
+      reportLink: "Report the problem: open an issue on the GitHub repository",
+      reportHint: "Attach the technical log (“Show technical log”, then Copy or Download).",
+      logsIssue: "Open an issue on GitHub",
+      footerIssues: "Report a problem",
       logsShow: "Show technical log", logsHide: "Hide technical log",
-      logsHelp: "Everything the page sent to and received from the watch. If something goes wrong, copy it into a GitHub issue. It contains no GPS position.",
+      logsHelp: "Everything the page sent to and received from the watch. If something goes wrong, attach it to an issue on the GitHub repository. It contains no GPS position.",
       logsCopy: "Copy", logsDownload: "Download (.txt)", logsCopied: "Copied.",
-      emptyHint: "If you know the watch holds runs, open the technical log below and attach it to a GitHub issue.",
-      seeLogs: "The technical log below (“Show technical log”) tells what happened: please attach it to a GitHub issue.",
+      emptyHint: "If you know the watch holds runs, please report it: open an issue on the GitHub repository (link at the bottom of the page) with the technical log below.",
+      seeLogs: "The technical log below (“Show technical log”) tells what happened.",
     },
     fr: {
       title: "Nike+ SportWatch GPS — récupérez vos sorties",
@@ -138,7 +143,7 @@
       eFile: "Ce fichier n'a pas pu être lu. Il faut un fichier .packets (de cette page ou de pull_raw_data_v2.py) ou un .bin de mémoire brute.",
       eIncomplete: "La montre n'a envoyé qu'une partie de sa mémoire, même après plusieurs demandes. Débranchez le dock, rebranchez-le et réessayez.",
       eGeneric: "Une erreur s'est produite :",
-      eHelp: "Si ça continue, ouvrez une issue sur GitHub avec ce message.",
+      eHelp: "Si ça continue, signalez-le (lien ci-dessous).",
       dist: "Distance", dur: "Durée", pace: "Allure moy.", kcal: "Calories",
       noGpsBadge: "sans GPS", incomplete: "fin non enregistrée", watchClock: "date de l'horloge de la montre",
       gpx: "GPX", csv: "CSV vitesse",
@@ -158,12 +163,16 @@
       eraseRunning: "Effacement… (jusqu'à 30 secondes — ne débranchez pas la montre)",
       eraseVerifying: "Vérification : nouvelle lecture de la montre…",
       eraseDone: "Terminé : la montre est vide. Vos sorties restent affichées sur cette page et dans la sauvegarde.",
-      eraseFailed: "La montre contient toujours ses sorties : elle n'a pas effacé sa mémoire. Rien n'est perdu. Ouvrez une issue sur GitHub avec le journal technique.",
+      eraseFailed: "La montre contient toujours ses sorties : elle n'a pas effacé sa mémoire. Rien n'est perdu. Signalez-le (lien ci-dessous) avec le journal technique.",
+      reportLink: "Signaler le problème : ouvrir une issue sur le dépôt GitHub",
+      reportHint: "Joignez-y le journal technique (« Afficher le journal technique », puis Copier ou Télécharger).",
+      logsIssue: "Ouvrir une issue sur GitHub",
+      footerIssues: "Signaler un problème",
       logsShow: "Afficher le journal technique", logsHide: "Masquer le journal technique",
-      logsHelp: "Tout ce que la page a envoyé à la montre et reçu d'elle. En cas de problème, copiez-le dans une issue GitHub. Il ne contient aucune position GPS.",
+      logsHelp: "Tout ce que la page a envoyé à la montre et reçu d'elle. En cas de problème, joignez-le à une issue sur le dépôt GitHub. Il ne contient aucune position GPS.",
       logsCopy: "Copier", logsDownload: "Télécharger (.txt)", logsCopied: "Copié.",
-      emptyHint: "Si vous savez que la montre contient des sorties, affichez le journal technique ci-dessous et joignez-le à une issue GitHub.",
-      seeLogs: "Le journal technique ci-dessous (« Afficher le journal technique ») explique ce qui s'est passé : joignez-le à une issue GitHub.",
+      emptyHint: "Si vous savez que la montre contient des sorties, signalez-le : ouvrez une issue sur le dépôt GitHub (lien en bas de page) avec le journal technique ci-dessous.",
+      seeLogs: "Le journal technique ci-dessous (« Afficher le journal technique ») explique ce qui s'est passé.",
     },
   };
 
@@ -237,11 +246,22 @@
     $("bar-fill").style.width = fraction == null ? "" : `${Math.round(fraction * 100)}%`;
   }
 
+  /** "Report the problem" paragraph with a real link to the issues page. */
+  function reportParagraph() {
+    const p = document.createElement("p");
+    p.className = "report";
+    const a = document.createElement("a");
+    a.href = ISSUES_URL; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = t("reportLink");
+    p.append(a, " — " + t("reportHint"));
+    return p;
+  }
+
   function showError(messages) {
     log("ERROR shown: " + messages.filter(Boolean).join(" / "));
     messages = messages.concat([t("seeLogs")]);
     const box = $("error");
-    box.replaceChildren(...messages.filter(Boolean).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
+    box.replaceChildren(...messages.filter(Boolean).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }), reportParagraph());
     box.hidden = false;
     setStatus(null);
   }
@@ -512,6 +532,7 @@
     box.hidden = !text;
     box.className = "erase-status" + (kind ? " " + kind : "");
     box.replaceChildren(...[].concat(text || []).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
+    if (kind === "bad") box.append(reportParagraph());
   }
 
   const confirmOk = () => $("erase-confirm").value.trim().toUpperCase() === t("eraseWord");

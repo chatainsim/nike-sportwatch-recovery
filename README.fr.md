@@ -29,8 +29,8 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
 > ⚠️ **Expérimentale.** La lecture a été confirmée sur une vraie montre
 > (Windows, Chrome) ; les autres configurations ne sont pas testées. Si elle
 > ne fonctionne pas chez vous, utilisez les [outils Python](#outils-python)
-> et ouvrez une issue avec le journal technique de la page (« Afficher le
-> journal technique »).
+> et [ouvrez une issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) avec le journal technique de la page (« Afficher le journal
+> technique »).
 
 Ouvrez **https://chatainsim.github.io/nike-sportwatch-recovery/** dans **Chrome ou Edge** sur un ordinateur, posez la montre
 sur son dock, cliquez sur **Connecter la montre**, et téléchargez vos
@@ -92,7 +92,7 @@ la montre fait apparaître est un leurre (il ne contient qu'un raccourci vers
 le site de Nike) : ignorez-le.
 
 **Si la lecture échoue**, `python pull_raw_data_v2.py --analyze "nike_v2_*.packets"`
-résume ce qui a été reçu. Ouvrez une issue avec cette sortie, mais sans y
+résume ce qui a été reçu. [Ouvrez une issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) avec cette sortie, mais sans y
 joindre publiquement les fichiers `.packets`, qui contiennent vos positions.
 
 ## Ce qui est récupéré
@@ -109,6 +109,23 @@ joindre publiquement les fichiers `.packets`, qui contiennent vos positions.
 L'horloge de la montre peut dériver ou être fausse : pour la date et l'heure
 d'une sortie, fiez-vous à l'heure GPS (utilisée dans le GPX) plutôt qu'à
 l'heure de la montre affichée par `decode_telemetry.py`.
+
+## Un problème ? Ouvrez une issue
+
+Si quelque chose ne marche pas (montre introuvable, lecture incomplète,
+sortie manquante ou bizarre, effacement qui échoue), **[ouvrez une issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues)**
+sur ce dépôt, en indiquant :
+
+- votre système et votre navigateur (ou votre version de Python) ;
+- pour l'appli web : le journal technique (**Afficher le journal
+  technique**, puis **Copier** ou **Télécharger**), qui ne contient aucune
+  position GPS ;
+- pour les outils Python : ce qui s'est affiché dans la console, et la
+  sortie de `--analyze` si une lecture semble fausse.
+
+Ne joignez pas publiquement de fichiers `.packets`, `.bin`, GPX ou CSV : ils
+contiennent les positions exactes de vos sorties. Signalez dans l'issue que
+vous les avez ; ils pourront être partagés en privé si besoin.
 
 ## Comment ça marche
 

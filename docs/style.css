@@ -94,6 +94,8 @@ main { padding-block: 24px 8px; display: grid; gap: 24px; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .error { margin-top: 16px; background: var(--err-bg); border: 1px solid var(--err-line); border-radius: 10px; padding: 12px 14px; }
 .error p { margin: 4px 0; }
+.report { font-size: .92rem; }
+.report a { font-weight: 600; }
 .logs-toggle { margin-top: 14px; }
 .linklike { background: none; border: 0; padding: 0; font: inherit; font-size: .88rem; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .logs { margin-top: 10px; }

@@ -47,6 +47,6 @@ Ne branchez pas la montre sur Nike+ Connect (il l'effacerait). Puis :
     python decode_telemetry.py nike_v2_stream_1_<horodatage>.packets sessions/ref
 
 Comparez le GPX de la Nike avec la trace de l'autre appareil dans n'importe
-quel visualiseur GPX. S'ils ne correspondent pas, ouvrez une issue avec la
+quel visualiseur GPX. S'ils ne correspondent pas, [ouvrez une issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) avec la
 sortie de `--analyze` et ce que vous avez constaté. Ne partagez les fichiers
 `.packets` et GPX qu'en privé : ils contiennent vos positions exactes.
