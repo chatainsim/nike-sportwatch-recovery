@@ -22,7 +22,13 @@ a phone/smartwatch GPS track recorded at the same time (see
 > Tested on a single watch, on Windows: reports from other watches,
 > firmwares, and operating systems are welcome.
 
-## 🌐 Easiest way: the web app
+## 🌐 Easiest way: the web app (experimental)
+
+> ⚠️ **Experimental, being tested.** The web app has so far only been
+> tested against a simulated watch replaying real data, not yet with a real
+> watch plugged in. If it does not work for you, use the
+> [Python tools](#python-tools), which are tested on real hardware, and
+> please open an issue.
 
 Open **https://chatainsim.github.io/nike-sportwatch-recovery/** in **Chrome or Edge** on a computer, put the watch on its
 dock, click **Connect the watch**, and download your runs. Nothing to
@@ -31,10 +37,8 @@ browser tab (only map backgrounds come from OpenStreetMap). The page lists
 each run with its map, distance, duration, pace, calories and speed chart,
 and exports GPX files and speed CSVs, one by one or all at once.
 
-It uses WebHID, which Firefox and Safari do not support. The USB connection
-in the browser is newer than the Python tools below: if it fails for you,
-use the Python tools and please open an issue. The page can also open a
-`.packets` file saved by `pull_raw_data_v2.py`.
+It uses WebHID, which Firefox and Safari do not support. The page can also
+open a `.packets` file saved by `pull_raw_data_v2.py`.
 
 The app lives in `docs/` (plain HTML/JavaScript, no build step);
 `docs/nike-decoder.js` is a JavaScript port of the Python decoders and

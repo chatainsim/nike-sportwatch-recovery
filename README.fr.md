@@ -24,7 +24,13 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
 > Testé sur une seule montre, sous Windows : les retours sur d'autres
 > montres, firmwares et systèmes sont bienvenus.
 
-## 🌐 Le plus simple : l'appli web
+## 🌐 Le plus simple : l'appli web (expérimentale)
+
+> ⚠️ **Expérimentale, en cours de test.** L'appli web n'a pour l'instant été
+> testée que contre une montre simulée qui rejoue de vraies données, pas
+> encore avec une vraie montre branchée. Si elle ne fonctionne pas chez
+> vous, utilisez les [outils Python](#outils-python), testés sur le vrai
+> matériel, et ouvrez une issue.
 
 Ouvrez **https://chatainsim.github.io/nike-sportwatch-recovery/** dans **Chrome ou Edge** sur un ordinateur, posez la montre
 sur son dock, cliquez sur **Connecter la montre**, et téléchargez vos
@@ -34,11 +40,8 @@ d'OpenStreetMap). La page liste chaque sortie avec sa carte, sa distance, sa
 durée, son allure, ses calories et sa courbe de vitesse, et exporte les GPX
 et les CSV de vitesse, un par un ou tous d'un coup.
 
-Elle utilise WebHID, que Firefox et Safari ne gèrent pas. La connexion USB
-depuis le navigateur est plus récente que les outils Python ci-dessous : si
-elle échoue chez vous, utilisez les outils Python et ouvrez une issue. La
-page sait aussi ouvrir un fichier `.packets` enregistré par
-`pull_raw_data_v2.py`.
+Elle utilise WebHID, que Firefox et Safari ne gèrent pas. La page sait aussi
+ouvrir un fichier `.packets` enregistré par `pull_raw_data_v2.py`.
 
 L'appli est dans `docs/` (HTML/JavaScript simple, sans compilation) ;
 `docs/nike-decoder.js` est un portage JavaScript des décodeurs Python et
