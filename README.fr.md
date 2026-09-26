@@ -24,6 +24,26 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
 > Testé sur une seule montre, sous Windows : les retours sur d'autres
 > montres, firmwares et systèmes sont bienvenus.
 
+## 🌐 Le plus simple : l'appli web
+
+Ouvrez **https://chatainsim.github.io/nike-sportwatch-recovery/** dans **Chrome ou Edge** sur un ordinateur, posez la montre
+sur son dock, cliquez sur **Connecter la montre**, et téléchargez vos
+sorties. Rien à installer, et rien n'est envoyé : la montre est lue et
+décodée dans l'onglet du navigateur (seuls les fonds de carte viennent
+d'OpenStreetMap). La page liste chaque sortie avec sa carte, sa distance, sa
+durée, son allure, ses calories et sa courbe de vitesse, et exporte les GPX
+et les CSV de vitesse, un par un ou tous d'un coup.
+
+Elle utilise WebHID, que Firefox et Safari ne gèrent pas. La connexion USB
+depuis le navigateur est plus récente que les outils Python ci-dessous : si
+elle échoue chez vous, utilisez les outils Python et ouvrez une issue. La
+page sait aussi ouvrir un fichier `.packets` enregistré par
+`pull_raw_data_v2.py`.
+
+L'appli est dans `docs/` (HTML/JavaScript simple, sans compilation) ;
+`docs/nike-decoder.js` est un portage JavaScript des décodeurs Python et
+donne des résultats identiques sur les mêmes données.
+
 ## ⚠️ Avant de commencer
 
 - **Ne branchez pas la montre sur Nike+ Connect.** Ce logiciel efface la
@@ -36,7 +56,7 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
   sorties** (qui partent souvent de chez vous). Réfléchissez avant de les
   partager publiquement.
 
-## Démarrage rapide
+## Outils Python
 
 Prérequis : Python 3.9 ou plus récent, et la montre avec son dock USB.
 
@@ -184,6 +204,7 @@ encore la montre, relisez-la plutôt avec `pull_raw_data_v2.py`.
 
 | Fichier | Rôle |
 |---|---|
+| `docs/` | l'appli web (index.html, app.js, watch-usb.js, nike-decoder.js) |
 | `pull_raw_data_v2.py` | lit la montre par USB, enregistre les paquets bruts |
 | `decode_gps.py` | blocs GPS → GPX, un fichier par sortie |
 | `decode_telemetry.py` | télémétrie → résumé + CSV vitesse/allure par seconde |

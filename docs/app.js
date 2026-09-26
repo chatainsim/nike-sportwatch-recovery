@@ -1,0 +1,427 @@
+/* Page logic: read the watch (or a file), list the runs, map, exports. */
+(function () {
+  "use strict";
+  const D = window.NikeDecoder;
+  const W = window.NikeWatch;
+  const $ = (id) => document.getElementById(id);
+
+  // ── Texts ──────────────────────────────────────────────────────────────────
+
+  const T = {
+    en: {
+      title: "Nike+ SportWatch GPS — get your runs back",
+      heroTitle: "Your runs are still on the watch",
+      heroLead: "Nike's servers are gone, but the watch kept your runs in memory. Plug it in, read it, and download each run as a GPX file for Strava, Garmin Connect or any mapping app.",
+      privacy: "Everything happens in this browser tab: your runs are never uploaded anywhere. Only map backgrounds are downloaded from OpenStreetMap.",
+      warnTitle: "Do not connect the watch to Nike+ Connect.",
+      warnText: "That software erases the watch after \"uploading\" it to servers that no longer exist. This page only reads.",
+      step1: "Put the watch on its USB dock and plug the dock into this computer.",
+      step2: "Click the button below, pick “Nike+ SportWatch” in the list, and click “Connect”.",
+      step3: "Wait a few seconds while the watch is read (twice, to check the copy).",
+      connect: "Connect the watch",
+      openFile: "Open a saved file…",
+      unsupported: "This browser cannot talk to USB devices. Use Chrome or Edge on a computer — or open a file saved earlier.",
+      dropHint: "You can also drop a .packets file (from pull_raw_data_v2.py) anywhere on this page.",
+      dropHere: "Drop the file to read it",
+      downloadAll: "Download all (.zip)",
+      downloadRaw: "Save raw data (.packets)",
+      noGps: "No GPS track for this run (GPS was off, or not recovered).",
+      paceChart: "Speed during the run",
+      faqTitle: "Questions",
+      faq1q: "The watch does not appear in the list",
+      faq1a: "Check that the dock is plugged in and the watch sits properly on it, then try another USB port. Close Nike+ Connect if it is running: it keeps the watch busy. On Linux, the browser needs permission to access the device (a udev rule for vendor 11ac, product 5455).",
+      faq2q: "Which browsers work?",
+      faq2a: "Chrome, Edge, Opera and other Chromium-based browsers on a computer (Windows, macOS, Linux). Firefox and Safari do not support talking to USB devices from a web page.",
+      faq3q: "The date of a run looks wrong",
+      faq3a: "The watch clock can drift or be wrong. For runs with GPS, the date comes from the GPS and is reliable; without GPS, only the watch clock is available.",
+      faq4q: "Heart rate and steps are missing",
+      faq4a: "Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.",
+      faq5q: "Is it safe for the watch?",
+      faq5a: "Yes: the page only sends read commands (version, memory status, read runs). Nothing is erased or written, and you can read the watch as often as you like.",
+      footer1: "Open source project, not affiliated with Nike or TomTom.",
+      footer2: "Built with",
+      // dynamic
+      sConnecting: "Connecting to the watch…",
+      sChecking: "Checking the watch memory…",
+      sReading: (n, pass) => `Reading the watch (${pass}/2)… ${n} packets`,
+      sDecoding: "Decoding…",
+      sFile: (name) => `Reading ${name}…`,
+      runsFound: (n) => (n === 0 ? "No run found" : n === 1 ? "1 run found" : `${n} runs found`),
+      verifyOk: "Read twice, both copies identical: the data is complete.",
+      verifyDiff: "The two reads differ: the result may be incomplete. Try reading the watch again.",
+      verifyFile: (name) => `Decoded from ${name}.`,
+      empty: "The watch memory is empty: there is no run to recover.",
+      noRuns: "The data was read, but no run could be decoded from it.",
+      eUnsupported: "This browser cannot access USB devices. Open this page in Chrome or Edge on a computer.",
+      eCancelled: "No watch selected. Click “Connect the watch” again and pick the watch in the list.",
+      eOpen: "The watch was found but could not be opened. Close Nike+ Connect (or any other program using the watch), unplug the dock, plug it back in and try again.",
+      eOpenLinux: "On Linux, the browser also needs permission: add a udev rule for vendor 11ac, product 5455.",
+      eTimeout: "The watch did not answer. Check that it sits properly on the dock, unplug and replug the dock, then try again.",
+      eFile: "This file could not be read. Expected a .packets file (from this page or pull_raw_data_v2.py) or a raw memory .bin.",
+      eGeneric: "Something went wrong:",
+      eHelp: "If it keeps failing, please open an issue on GitHub with this message.",
+      dist: "Distance", dur: "Duration", pace: "Avg. pace", kcal: "Calories",
+      noGpsBadge: "no GPS", incomplete: "end not recorded", watchClock: "date from the watch clock",
+      gpx: "GPX", csv: "Speed CSV",
+      legend: (max) => `max ${max}`,
+      noSpeed: "no speed data",
+    },
+    fr: {
+      title: "Nike+ SportWatch GPS — récupérez vos sorties",
+      heroTitle: "Vos sorties sont toujours dans la montre",
+      heroLead: "Les serveurs de Nike ont fermé, mais la montre a gardé vos sorties en mémoire. Branchez-la, lisez-la, et téléchargez chaque sortie en GPX pour Strava, Garmin Connect ou n'importe quelle appli de carte.",
+      privacy: "Tout se passe dans cet onglet : vos sorties ne sont jamais envoyées nulle part. Seuls les fonds de carte sont téléchargés depuis OpenStreetMap.",
+      warnTitle: "Ne branchez pas la montre sur Nike+ Connect.",
+      warnText: "Ce logiciel efface la montre après l'avoir « envoyée » vers des serveurs qui n'existent plus. Cette page ne fait que lire.",
+      step1: "Posez la montre sur son dock USB et branchez le dock sur cet ordinateur.",
+      step2: "Cliquez sur le bouton ci-dessous, choisissez « Nike+ SportWatch » dans la liste, puis « Connexion ».",
+      step3: "Patientez quelques secondes pendant la lecture (faite deux fois, pour vérifier la copie).",
+      connect: "Connecter la montre",
+      openFile: "Ouvrir un fichier enregistré…",
+      unsupported: "Ce navigateur ne peut pas communiquer avec les appareils USB. Utilisez Chrome ou Edge sur un ordinateur, ou ouvrez un fichier enregistré.",
+      dropHint: "Vous pouvez aussi déposer un fichier .packets (de pull_raw_data_v2.py) n'importe où sur la page.",
+      dropHere: "Déposez le fichier pour le lire",
+      downloadAll: "Tout télécharger (.zip)",
+      downloadRaw: "Enregistrer les données brutes (.packets)",
+      noGps: "Pas de trace GPS pour cette sortie (GPS éteint, ou non récupéré).",
+      paceChart: "Vitesse pendant la sortie",
+      faqTitle: "Questions",
+      faq1q: "La montre n'apparaît pas dans la liste",
+      faq1a: "Vérifiez que le dock est branché et que la montre est bien posée dessus, puis essayez un autre port USB. Fermez Nike+ Connect s'il est ouvert : il occupe la montre. Sous Linux, le navigateur a besoin d'une autorisation d'accès (une règle udev pour le vendor 11ac, product 5455).",
+      faq2q: "Quels navigateurs fonctionnent ?",
+      faq2a: "Chrome, Edge, Opera et les autres navigateurs basés sur Chromium, sur ordinateur (Windows, macOS, Linux). Firefox et Safari ne permettent pas à une page web de communiquer avec un appareil USB.",
+      faq3q: "La date d'une sortie semble fausse",
+      faq3a: "L'horloge de la montre peut dériver ou être fausse. Pour les sorties avec GPS, la date vient du GPS et elle est fiable ; sans GPS, seule l'horloge de la montre est disponible.",
+      faq4q: "Il manque le cardio et les pas",
+      faq4a: "Ces formats ne sont pas encore décodés : aucune ceinture cardio ni capteur de foulée n'était appairé sur la montre qui a servi à créer cet outil. Si vous avez des sorties avec, contactez-nous sur GitHub.",
+      faq5q: "Est-ce sans risque pour la montre ?",
+      faq5a: "Oui : la page n'envoie que des commandes de lecture (version, état de la mémoire, lecture des sorties). Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
+      footer1: "Projet open source, sans lien avec Nike ou TomTom.",
+      footer2: "Réalisé avec",
+      sConnecting: "Connexion à la montre…",
+      sChecking: "Vérification de la mémoire de la montre…",
+      sReading: (n, pass) => `Lecture de la montre (${pass}/2)… ${n} paquets`,
+      sDecoding: "Décodage…",
+      sFile: (name) => `Lecture de ${name}…`,
+      runsFound: (n) => (n === 0 ? "Aucune sortie trouvée" : n === 1 ? "1 sortie trouvée" : `${n} sorties trouvées`),
+      verifyOk: "Lue deux fois, copies identiques : les données sont complètes.",
+      verifyDiff: "Les deux lectures diffèrent : le résultat est peut-être incomplet. Relisez la montre.",
+      verifyFile: (name) => `Décodé depuis ${name}.`,
+      empty: "La mémoire de la montre est vide : il n'y a aucune sortie à récupérer.",
+      noRuns: "Les données ont été lues, mais aucune sortie n'a pu en être décodée.",
+      eUnsupported: "Ce navigateur ne peut pas accéder aux appareils USB. Ouvrez cette page dans Chrome ou Edge, sur un ordinateur.",
+      eCancelled: "Aucune montre choisie. Cliquez à nouveau sur « Connecter la montre » et choisissez-la dans la liste.",
+      eOpen: "La montre a été trouvée mais n'a pas pu être ouverte. Fermez Nike+ Connect (ou tout autre programme qui utilise la montre), débranchez le dock, rebranchez-le et réessayez.",
+      eOpenLinux: "Sous Linux, le navigateur a aussi besoin d'une autorisation : ajoutez une règle udev pour le vendor 11ac, product 5455.",
+      eTimeout: "La montre ne répond pas. Vérifiez qu'elle est bien posée sur le dock, débranchez et rebranchez le dock, puis réessayez.",
+      eFile: "Ce fichier n'a pas pu être lu. Il faut un fichier .packets (de cette page ou de pull_raw_data_v2.py) ou un .bin de mémoire brute.",
+      eGeneric: "Une erreur s'est produite :",
+      eHelp: "Si ça continue, ouvrez une issue sur GitHub avec ce message.",
+      dist: "Distance", dur: "Durée", pace: "Allure moy.", kcal: "Calories",
+      noGpsBadge: "sans GPS", incomplete: "fin non enregistrée", watchClock: "date de l'horloge de la montre",
+      gpx: "GPX", csv: "CSV vitesse",
+      legend: (max) => `max ${max}`,
+      noSpeed: "pas de données de vitesse",
+    },
+  };
+
+  let lang = (() => {
+    try { const s = localStorage.getItem("lang"); if (s === "fr" || s === "en") return s; } catch (_) {}
+    return (navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
+  })();
+  const t = (k, ...a) => { const v = T[lang][k]; return typeof v === "function" ? v(...a) : v; };
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.title = t("title");
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    if (state.runs) renderRuns();
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  const state = { runs: null, selected: 0, packets: null, verify: null, source: null, lastError: null };
+
+  // ── Status / errors ────────────────────────────────────────────────────────
+
+  function setStatus(text, fraction) {
+    $("status").hidden = !text;
+    $("status-text").textContent = text || "";
+    const bar = $("status").querySelector(".bar");
+    bar.classList.toggle("indeterminate", fraction == null);
+    $("bar-fill").style.width = fraction == null ? "" : `${Math.round(fraction * 100)}%`;
+  }
+
+  function showError(messages) {
+    const box = $("error");
+    box.replaceChildren(...messages.filter(Boolean).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
+    box.hidden = false;
+    setStatus(null);
+  }
+  const clearError = () => { $("error").hidden = true; };
+
+  function explain(err) {
+    const code = err && err.code;
+    if (code === "unsupported") return [t("eUnsupported")];
+    if (code === "cancelled") return [t("eCancelled")];
+    if (code === "timeout") return [t("eTimeout")];
+    if (code === "open") return [t("eOpen"), /Linux/.test(navigator.userAgent) ? t("eOpenLinux") : null];
+    return [t("eGeneric") + " " + (err && (err.message || err)), t("eHelp")];
+  }
+
+  // ── Reading ────────────────────────────────────────────────────────────────
+
+  let busy = false;
+
+  async function readWatch() {
+    if (busy) return;
+    busy = true; clearError(); $("connect").disabled = true;
+    let watch = null;
+    try {
+      setStatus(t("sConnecting"));
+      watch = await W.connect();
+      setStatus(t("sChecking"));
+      await watch.version();
+      if (!(await watch.hasData())) { setStatus(null); showResults([], null, "empty"); return; }
+      // The expected size is unknown before the first read: indeterminate bar.
+      let expected = null;
+      const reads = [];
+      for (const pass of [1, 2]) {
+        const packets = await watch.readWorkouts((n) => setStatus(t("sReading", n, pass), expected ? Math.min(1, n / expected) : null));
+        reads.push(packets);
+        expected = packets.length;
+      }
+      setStatus(t("sDecoding"));
+      const identical = W.samePackets(reads[0], reads[1]);
+      state.packets = reads[0];
+      decodeAndShow(D.payloadStream(reads[0]), identical ? "ok" : "diff");
+    } catch (err) {
+      console.error(err);
+      showError(explain(err));
+    } finally {
+      if (watch) await watch.close();
+      busy = false; $("connect").disabled = false;
+    }
+  }
+
+  async function readFile(file) {
+    if (!file || busy) return;
+    clearError();
+    try {
+      setStatus(t("sFile", file.name));
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const stream = file.name.toLowerCase().endsWith(".packets") ? D.payloadStream(D.parsePacketsFile(buf)) : buf;
+      if (!stream.length) throw new Error("empty");
+      state.packets = null;
+      decodeAndShow(stream, "file:" + file.name);
+    } catch (err) {
+      console.error(err);
+      showError([t("eFile")]);
+    }
+  }
+
+  function decodeAndShow(stream, verify) {
+    const runs = D.decodeRuns(stream);
+    setStatus(null);
+    showResults(runs, verify, runs.length ? null : "noRuns");
+  }
+
+  // ── Results ────────────────────────────────────────────────────────────────
+
+  function showResults(runs, verify, emptyReason) {
+    state.runs = runs; state.verify = verify; state.selected = runs.length - 1; state.emptyReason = emptyReason;
+    $("results").hidden = false;
+    renderRuns();
+    $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const fmtNum = (x, d) => new Intl.NumberFormat(lang, { minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
+  function fmtDuration(s) {
+    if (s == null) return "—";
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+    return h ? `${h} h ${String(m).padStart(2, "0")} min` : `${m} min ${String(sec).padStart(2, "0")} s`;
+  }
+  function runPace(r) {
+    if (r.meanSpeed) return D.paceString(r.meanSpeed);
+    if (r.distance && r.duration) return D.paceString(r.distance / r.duration);
+    return "—";
+  }
+
+  function renderRuns() {
+    const runs = state.runs || [];
+    $("results-title").textContent = state.emptyReason === "empty" ? t("empty") : t("runsFound", runs.length);
+    const note = $("verify-note");
+    note.className = "note";
+    if (state.emptyReason === "noRuns") note.textContent = t("noRuns");
+    else if (state.verify === "ok") { note.textContent = t("verifyOk"); note.classList.add("ok"); }
+    else if (state.verify === "diff") note.textContent = t("verifyDiff");
+    else if (state.verify && state.verify.startsWith("file:")) note.textContent = t("verifyFile", state.verify.slice(5));
+    else note.textContent = "";
+    $("download-all").hidden = !runs.length;
+    $("download-raw").hidden = !state.packets;
+    document.querySelector(".layout").hidden = !runs.length;
+
+    const list = $("runs");
+    list.replaceChildren();
+    const dateFmt = new Intl.DateTimeFormat(lang, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const timeFmt = new Intl.DateTimeFormat(lang, { hour: "2-digit", minute: "2-digit" });
+    runs.forEach((r, i) => {
+      const li = document.createElement("li");
+      li.className = "run"; li.tabIndex = 0; li.setAttribute("role", "button");
+      li.setAttribute("aria-selected", String(i === state.selected));
+      const d = new Date(r.start * 1000);
+      const date = dateFmt.format(d);
+      li.innerHTML = `
+        <div class="run-date"></div>
+        <div class="run-time"></div>
+        <div class="stats">
+          <div class="stat"><span>${t("dist")}</span><b>${r.distance != null ? fmtNum(r.distance / 1000, 2) + " km" : "—"}</b></div>
+          <div class="stat"><span>${t("dur")}</span><b>${fmtDuration(r.duration)}</b></div>
+          <div class="stat"><span>${t("pace")}</span><b>${runPace(r)}${runPace(r) !== "—" ? " /km" : ""}</b></div>
+          <div class="stat"><span>${t("kcal")}</span><b>${r.calories != null ? r.calories : "—"}</b></div>
+        </div>
+        <div class="badges"></div>
+        <div class="run-actions"></div>`;
+      li.querySelector(".run-date").textContent = date.charAt(0).toUpperCase() + date.slice(1);
+      li.querySelector(".run-time").textContent = timeFmt.format(d);
+      const badges = li.querySelector(".badges");
+      const addBadge = (txt) => { const b = document.createElement("span"); b.className = "badge"; b.textContent = txt; badges.append(b); };
+      if (!r.track.length) addBadge(t("noGpsBadge"));
+      if (!r.startFromGps) addBadge(t("watchClock"));
+      if (r.complete === false) addBadge(t("incomplete"));
+      if (!badges.children.length) badges.remove();
+      const actions = li.querySelector(".run-actions");
+      if (r.track.length) actions.append(fileButton(t("gpx"), () => download(D.fileStem(r) + ".gpx", D.toGpx(r), "application/gpx+xml")));
+      if (r.samples.length) actions.append(fileButton(t("csv"), () => download(D.fileStem(r) + ".csv", D.toCsv(r), "text/csv")));
+      const select = () => { state.selected = i; renderRuns(); };
+      li.addEventListener("click", (e) => { if (!e.target.closest("button")) select(); });
+      li.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === li) { e.preventDefault(); select(); } });
+      list.append(li);
+    });
+    if (runs.length) showRun(runs[state.selected]);
+  }
+
+  function fileButton(label, action) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn small"; b.textContent = "⬇ " + label;
+    b.addEventListener("click", action);
+    return b;
+  }
+
+  // ── Map and chart ──────────────────────────────────────────────────────────
+
+  let map = null, layer = null;
+
+  function showRun(r) {
+    const hasTrack = r.track.length > 1;
+    $("map").hidden = !hasTrack;
+    $("map-empty").hidden = hasTrack;
+    if (hasTrack && window.L) {
+      if (!map) {
+        map = L.map("map", { scrollWheelZoom: false });
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(map);
+      }
+      if (layer) layer.remove();
+      const latlngs = r.track.map((p) => [p.lat, p.lon]);
+      const color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff5a1f";
+      layer = L.featureGroup([
+        L.polyline(latlngs, { color, weight: 4, opacity: 0.9 }),
+        L.circleMarker(latlngs[0], { radius: 7, color: "#fff", weight: 2, fillColor: "#1a8a4a", fillOpacity: 1 }),
+        L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: "#fff", weight: 2, fillColor: "#c62828", fillOpacity: 1 }),
+      ]).addTo(map);
+      setTimeout(() => { map.invalidateSize(); map.fitBounds(layer.getBounds(), { padding: [24, 24] }); }, 0);
+    }
+    drawChart(r);
+  }
+
+  function drawChart(r) {
+    const canvas = $("chart");
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = 140;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const css = getComputedStyle(document.documentElement);
+    const vals = r.samples.map((s) => (s.speed && s.speed < 0xfe ? s.speed / 10 * 3.6 : null));
+    const ok = vals.filter((v) => v != null);
+    if (!ok.length) {
+      $("chart-legend").textContent = t("noSpeed");
+      return;
+    }
+    // Light smoothing: the watch has isolated spikes.
+    const smooth = vals.map((_, i) => {
+      const win = vals.slice(Math.max(0, i - 4), i + 5).filter((v) => v != null);
+      return win.length ? win.sort((a, b) => a - b)[Math.floor(win.length / 2)] : null;
+    });
+    const max = Math.max(...smooth.filter((v) => v != null)) * 1.1 || 1;
+    $("chart-legend").textContent = t("legend", fmtNum(max / 1.1, 1) + " km/h");
+    ctx.strokeStyle = css.getPropertyValue("--line"); ctx.lineWidth = 1;
+    for (const f of [0.25, 0.5, 0.75]) { ctx.beginPath(); ctx.moveTo(0, h * f); ctx.lineTo(w, h * f); ctx.stroke(); }
+    ctx.strokeStyle = css.getPropertyValue("--accent"); ctx.lineWidth = 2; ctx.lineJoin = "round";
+    ctx.beginPath();
+    let pen = false;
+    smooth.forEach((v, i) => {
+      if (v == null) { pen = false; return; }
+      const x = (i / Math.max(1, smooth.length - 1)) * w, y = h - (v / max) * (h - 8) - 4;
+      if (pen) ctx.lineTo(x, y); else { ctx.moveTo(x, y); pen = true; }
+    });
+    ctx.stroke();
+  }
+
+  // ── Downloads ──────────────────────────────────────────────────────────────
+
+  function download(name, content, type) {
+    const blob = content instanceof Blob ? content : new Blob([content], { type });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+
+  async function downloadAll() {
+    const runs = state.runs || [];
+    if (window.JSZip) {
+      const zip = new JSZip();
+      for (const r of runs) {
+        if (r.track.length) zip.file("gpx/" + D.fileStem(r) + ".gpx", D.toGpx(r));
+        if (r.samples.length) zip.file("csv/" + D.fileStem(r) + ".csv", D.toCsv(r));
+      }
+      download("nike-sportwatch-runs.zip", await zip.generateAsync({ type: "blob" }));
+    } else {
+      for (const r of runs) if (r.track.length) download(D.fileStem(r) + ".gpx", D.toGpx(r), "application/gpx+xml");
+    }
+  }
+
+  // ── Wiring ─────────────────────────────────────────────────────────────────
+
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang;
+    try { localStorage.setItem("lang", lang); } catch (_) {}
+    applyLang();
+  }));
+  $("connect").addEventListener("click", readWatch);
+  $("file").addEventListener("change", (e) => { readFile(e.target.files[0]); e.target.value = ""; });
+  $("download-all").addEventListener("click", downloadAll);
+  $("download-raw").addEventListener("click", () => {
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    download(`nike_watch_${stamp}.packets`, new Blob([D.serializePackets(state.packets)]));
+  });
+
+  let dragDepth = 0;
+  window.addEventListener("dragenter", (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { dragDepth++; $("dropzone").hidden = false; } });
+  window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("dropzone").hidden = true; });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => {
+    e.preventDefault(); dragDepth = 0; $("dropzone").hidden = true;
+    readFile(e.dataTransfer.files[0]);
+  });
+  window.addEventListener("resize", () => { if (state.runs && state.runs.length) drawChart(state.runs[state.selected]); });
+
+  if (!W.supported()) { $("connect").disabled = true; $("unsupported").hidden = false; }
+  applyLang();
+})();

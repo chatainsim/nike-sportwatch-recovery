@@ -22,6 +22,24 @@ a phone/smartwatch GPS track recorded at the same time (see
 > Tested on a single watch, on Windows: reports from other watches,
 > firmwares, and operating systems are welcome.
 
+## 🌐 Easiest way: the web app
+
+Open **https://chatainsim.github.io/nike-sportwatch-recovery/** in **Chrome or Edge** on a computer, put the watch on its
+dock, click **Connect the watch**, and download your runs. Nothing to
+install, and nothing is uploaded: the watch is read and decoded inside your
+browser tab (only map backgrounds come from OpenStreetMap). The page lists
+each run with its map, distance, duration, pace, calories and speed chart,
+and exports GPX files and speed CSVs, one by one or all at once.
+
+It uses WebHID, which Firefox and Safari do not support. The USB connection
+in the browser is newer than the Python tools below: if it fails for you,
+use the Python tools and please open an issue. The page can also open a
+`.packets` file saved by `pull_raw_data_v2.py`.
+
+The app lives in `docs/` (plain HTML/JavaScript, no build step);
+`docs/nike-decoder.js` is a JavaScript port of the Python decoders and
+gives identical results on the same data.
+
 ## ⚠️ Before you start
 
 - **Do not connect the watch to Nike+ Connect.** That software erases the
@@ -33,7 +51,7 @@ a phone/smartwatch GPS track recorded at the same time (see
 - The files they produce contain **the exact GPS locations of your runs**
   (often starting from home). Think twice before sharing them publicly.
 
-## Quick start
+## Python tools
 
 Requirements: Python 3.9 or later, and the watch with its USB dock.
 
@@ -173,6 +191,7 @@ read it again with `pull_raw_data_v2.py` instead.
 
 | File | Role |
 |---|---|
+| `docs/` | the web app (index.html, app.js, watch-usb.js, nike-decoder.js) |
 | `pull_raw_data_v2.py` | reads the watch over USB, saves raw packets |
 | `decode_gps.py` | GPS blocks → GPX, one file per run |
 | `decode_telemetry.py` | telemetry → summary + per-second speed/pace CSV |

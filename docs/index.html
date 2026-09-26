@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nike+ SportWatch GPS — get your runs back</title>
+<meta name="description" content="Read your Nike+ SportWatch GPS over USB in your browser and download your runs as GPX. Nothing is uploaded.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">⌚</span>
+      <span data-i18n="title">Nike+ SportWatch GPS — get your runs back</span>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="fr">FR</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero card">
+    <h1 data-i18n="heroTitle">Your runs are still on the watch</h1>
+    <p class="lead" data-i18n="heroLead">Nike's servers are gone, but the watch kept your runs in memory. Plug it in, read it, and download each run as a GPX file for Strava, Garmin Connect or any mapping app.</p>
+    <p class="privacy">🔒 <span data-i18n="privacy">Everything happens in this browser tab: your runs are never uploaded anywhere. Only map backgrounds are downloaded from OpenStreetMap.</span></p>
+
+    <div class="warning" role="note">
+      <strong data-i18n="warnTitle">Do not connect the watch to Nike+ Connect.</strong>
+      <span data-i18n="warnText">That software erases the watch after "uploading" it to servers that no longer exist. This page only reads.</span>
+    </div>
+
+    <ol class="steps">
+      <li data-i18n="step1">Put the watch on its USB dock and plug the dock into this computer.</li>
+      <li data-i18n="step2">Click the button below, pick “Nike+ SportWatch” in the list, and click “Connect”.</li>
+      <li data-i18n="step3">Wait a few seconds while the watch is read (twice, to check the copy).</li>
+    </ol>
+
+    <div class="actions">
+      <button id="connect" class="btn primary" type="button" data-i18n="connect">Connect the watch</button>
+      <label class="btn ghost" for="file" data-i18n="openFile">Open a saved file…</label>
+      <input id="file" type="file" accept=".packets,.bin" hidden>
+    </div>
+    <p id="unsupported" class="note" hidden data-i18n="unsupported">This browser cannot talk to USB devices. Use Chrome or Edge on a computer — or open a file saved earlier.</p>
+    <p class="note hint" data-i18n="dropHint">You can also drop a .packets file (from pull_raw_data_v2.py) anywhere on this page.</p>
+
+    <div id="status" class="status" hidden aria-live="polite">
+      <div class="status-line"><span id="status-text"></span></div>
+      <div class="bar"><div id="bar-fill"></div></div>
+    </div>
+    <div id="error" class="error" hidden role="alert"></div>
+  </section>
+
+  <section id="results" hidden>
+    <div class="results-head">
+      <h2 id="results-title"></h2>
+      <div class="results-actions">
+        <button id="download-all" class="btn primary" type="button" data-i18n="downloadAll">Download all (.zip)</button>
+        <button id="download-raw" class="btn ghost" type="button" data-i18n="downloadRaw" hidden>Save raw data (.packets)</button>
+      </div>
+    </div>
+    <p id="verify-note" class="note"></p>
+
+    <div class="layout">
+      <ul id="runs" class="runs" aria-label="Runs"></ul>
+      <div class="detail card">
+        <div id="map" class="map" role="img" aria-label="Map of the selected run"></div>
+        <p id="map-empty" class="map-empty" hidden data-i18n="noGps">No GPS track for this run (GPS was off, or not recovered).</p>
+        <div class="chart-wrap">
+          <div class="chart-head">
+            <span data-i18n="paceChart">Speed during the run</span>
+            <span id="chart-legend" class="muted"></span>
+          </div>
+          <canvas id="chart" height="140"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card faq">
+    <h2 data-i18n="faqTitle">Questions</h2>
+    <details><summary data-i18n="faq1q">The watch does not appear in the list</summary><p data-i18n="faq1a">Check that the dock is plugged in and the watch sits properly on it, then try another USB port. Close Nike+ Connect if it is running: it keeps the watch busy. On Linux, the browser needs permission to access the device (a udev rule for vendor 11ac, product 5455).</p></details>
+    <details><summary data-i18n="faq2q">Which browsers work?</summary><p data-i18n="faq2a">Chrome, Edge, Opera and other Chromium-based browsers on a computer (Windows, macOS, Linux). Firefox and Safari do not support talking to USB devices from a web page.</p></details>
+    <details><summary data-i18n="faq3q">The date of a run looks wrong</summary><p data-i18n="faq3a">The watch clock can drift or be wrong. For runs with GPS, the date comes from the GPS and is reliable; without GPS, only the watch clock is available.</p></details>
+    <details><summary data-i18n="faq4q">Heart rate and steps are missing</summary><p data-i18n="faq4a">Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.</p></details>
+    <details><summary data-i18n="faq5q">Is it safe for the watch?</summary><p data-i18n="faq5a">Yes: the page only sends read commands (version, memory status, read runs). Nothing is erased or written, and you can read the watch as often as you like.</p></details>
+  </section>
+</main>
+
+<footer class="wrap footer">
+  <p><span data-i18n="footer1">Open source project, not affiliated with Nike or TomTom.</span>
+     <a href="https://github.com/chatainsim/nike-sportwatch-recovery">GitHub</a> ·
+     <span data-i18n="footer2">Built with</span> <a href="https://claude.com/claude-code">Claude Code</a>.</p>
+</footer>
+
+<div id="dropzone" class="dropzone" hidden><div data-i18n="dropHere">Drop the file to read it</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="nike-decoder.js"></script>
+<script src="watch-usb.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
