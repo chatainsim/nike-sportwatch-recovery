@@ -24,8 +24,8 @@ a phone/smartwatch GPS track recorded at the same time (see
 
 ## 🌐 Easiest way: the web app (experimental)
 
-> ⚠️ **Experimental.** Reading has been confirmed on one real watch
-> (Windows, Chrome); other set-ups are untested. If it does not work for
+> ⚠️ **Experimental.** Reading and emptying the watch have been confirmed on
+> one real watch (Windows, Chrome); other set-ups are untested. If it does not work for
 > you, use the [Python tools](#python-tools) and please [open an issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) with the
 > page's technical log ("Show technical log").
 
@@ -43,11 +43,11 @@ set the clock to the computer's time: a wrong clock dates new runs wrongly
 (experimental: confirmed so far against a simulated watch only).
 
 After a complete, verified read, the page can also **empty the watch**
-(experimental: the erase command has not been confirmed on a real watch yet).
-It requires downloading a backup first (GPX, CSV and raw data), typing
-`ERASE`, checks right before erasing that the watch still holds exactly the
-backed-up data, sends the erase command once, and reads the watch again to
-confirm it is empty. If the watch refuses the command, nothing is lost.
+(confirmed on a real watch), so it can record new runs once its memory is
+full. It requires downloading a backup first (GPX, TCX, CSV and raw data),
+typing `ERASE`, checks right before erasing that the watch still holds
+exactly the backed-up data, sends the erase command once, and reads the
+watch again to confirm it is empty.
 
 It uses WebHID, which Firefox and Safari do not support. The page can also
 open a `.packets` file saved by `pull_raw_data_v2.py`.
@@ -88,6 +88,15 @@ The watch's battery and clock:
 
     python watch_tools.py              # battery level and clock (read-only)
     python watch_tools.py --set-time   # set the clock to this computer's time
+
+Emptying the watch, after a backup:
+
+    python erase_watch.py
+
+It reads the watch twice (the copies must be identical), writes a
+`backup_<date>/` folder (raw `.packets`, one GPX and one speed CSV per run),
+lists the runs, asks you to type `ERASE`, sends the erase command once and
+reads the watch again: success is only reported if no run is left.
 
 **Linux / macOS**: not tested. `hidapi` needs access to the USB device; on
 Linux this usually means running as root or adding a udev rule for vendor
@@ -157,7 +166,7 @@ bytes 4-6, and answers each request with more than one packet.
 
 | `0x13` | `battery` | battery level; reply payload `[level][Y charging / N not]` |
 | `0x21` | `time` | without arguments: read the clock; with them: set it. Payload `[Unix time UTC u32][GMT offset s, i32][DST min, u8]`, big-endian |
-| `0x11` | `eeprom-erase` | erase all runs; 16-bit guard value `EE 86` (experimental) |
+| `0x11` | `eeprom-erase` | erase all runs; 16-bit guard value `EE 86` (from the comsport C++ code, confirmed on a real watch) |
 
 The battery and clock formats come from the official parsers in Nike+
 Connect's `SportWatchPlugin.dll` (`completeBattery`, `completeTime`). The
@@ -243,6 +252,7 @@ read it again with `pull_raw_data_v2.py` instead.
 | `decode_telemetry.py` | telemetry → summary + per-second speed/pace CSV |
 | `export_runs.py` | all runs → GPX, TCX and speed CSV (same files as the web app) |
 | `watch_tools.py` | battery level, watch clock, `--set-time` |
+| `erase_watch.py` | empties the watch, after a verified backup |
 | `tests/` | tests on synthetic data (Python and JavaScript), run on every push |
 | `extract_blocks.py` | splits a data stream into CRC-validated blocks (also a debugging tool) |
 | `reconstruct_v1_dump.py` | rebuilds memory from an old per-packet dump |

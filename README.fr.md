@@ -26,8 +26,9 @@ validés contre une trace GPS enregistrée en même temps par un autre appareil
 
 ## 🌐 Le plus simple : l'appli web (expérimentale)
 
-> ⚠️ **Expérimentale.** La lecture a été confirmée sur une vraie montre
-> (Windows, Chrome) ; les autres configurations ne sont pas testées. Si elle
+> ⚠️ **Expérimentale.** La lecture et le vidage de la montre ont été
+> confirmés sur une vraie montre (Windows, Chrome) ; les autres
+> configurations ne sont pas testées. Si elle
 > ne fonctionne pas chez vous, utilisez les [outils Python](#outils-python)
 > et [ouvrez une issue](https://github.com/chatainsim/nike-sportwatch-recovery/issues) avec le journal technique de la page (« Afficher le journal
 > technique »).
@@ -48,12 +49,12 @@ fausse date mal les nouvelles sorties (expérimental : confirmé pour
 l'instant uniquement sur une montre simulée).
 
 Après une lecture complète et vérifiée, la page peut aussi **vider la
-montre** (expérimental : la commande d'effacement n'a pas encore été
-confirmée sur une vraie montre). Il faut d'abord télécharger une sauvegarde
-(GPX, CSV et données brutes) et taper `EFFACER` ; juste avant d'effacer, la
-page vérifie que la montre contient toujours exactement les données
-sauvegardées, envoie la commande une seule fois, puis relit la montre pour
-confirmer qu'elle est vide. Si la montre refuse la commande, rien n'est perdu.
+montre** (confirmé sur une vraie montre), pour qu'elle puisse enregistrer de
+nouvelles sorties une fois sa mémoire pleine. Il faut d'abord télécharger
+une sauvegarde (GPX, TCX, CSV et données brutes) et taper `EFFACER` ; juste
+avant d'effacer, la page vérifie que la montre contient toujours exactement
+les données sauvegardées, envoie la commande une seule fois, puis relit la
+montre pour confirmer qu'elle est vide.
 
 Elle utilise WebHID, que Firefox et Safari ne gèrent pas. La page sait aussi
 ouvrir un fichier `.packets` enregistré par `pull_raw_data_v2.py`.
@@ -97,6 +98,16 @@ Batterie et horloge de la montre :
 
     python watch_tools.py              # niveau de batterie et horloge (lecture seule)
     python watch_tools.py --set-time   # régler l'horloge sur l'heure de cet ordinateur
+
+Vider la montre, après sauvegarde :
+
+    python erase_watch.py
+
+Il lit la montre deux fois (les copies doivent être identiques), écrit un
+dossier `backup_<date>/` (`.packets` brut, un GPX et un CSV de vitesse par
+sortie), liste les sorties, demande de taper `ERASE`, envoie une seule fois
+la commande d'effacement puis relit la montre : le succès n'est annoncé que
+s'il ne reste aucune sortie.
 
 **Linux / macOS** : non testés. `hidapi` doit avoir accès au périphérique
 USB ; sous Linux, il faut en général lancer le script en root ou ajouter une
@@ -170,7 +181,7 @@ paquet.
 
 | `0x13` | `battery` | niveau de batterie ; réponse `[niveau][Y en charge / N sinon]` |
 | `0x21` | `time` | sans paramètre : lit l'horloge ; avec : la règle. Données `[heure Unix UTC u32][décalage GMT s, i32][heure d'été min, u8]`, big-endian |
-| `0x11` | `eeprom-erase` | efface toutes les sorties ; valeur de garde 16 bits `EE 86` (expérimental) |
+| `0x11` | `eeprom-erase` | efface toutes les sorties ; valeur de garde 16 bits `EE 86` (du code C++ comsport, confirmée sur une vraie montre) |
 
 Les formats de la batterie et de l'horloge viennent des fonctions de
 décodage officielles de `SportWatchPlugin.dll`, dans Nike+ Connect
@@ -261,6 +272,7 @@ encore la montre, relisez-la plutôt avec `pull_raw_data_v2.py`.
 | `decode_telemetry.py` | télémétrie → résumé + CSV vitesse/allure par seconde |
 | `export_runs.py` | toutes les sorties → GPX, TCX et CSV de vitesse (mêmes fichiers que l'appli web) |
 | `watch_tools.py` | niveau de batterie, horloge de la montre, `--set-time` |
+| `erase_watch.py` | vide la montre, après une sauvegarde vérifiée |
 | `tests/` | tests sur données synthétiques (Python et JavaScript), lancés à chaque envoi |
 | `extract_blocks.py` | découpe un flux en blocs validés par CRC (aussi outil de diagnostic) |
 | `reconstruct_v1_dump.py` | reconstitue la mémoire à partir d'un ancien dump paquet par paquet |
