@@ -38,7 +38,7 @@
       faq4q: "Heart rate and steps are missing",
       faq4a: "Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.",
       faq5q: "Is it safe for the watch?",
-      faq5a: "Yes: the page only sends the command that reads the runs. Nothing is erased or written, and you can read the watch as often as you like.",
+      faq5a: "Yes: reading only sends the read command, nothing is erased or written, and you can read the watch as often as you like. Only two actions write to the watch, and only when you click them: setting its clock, and emptying it (after a backup).",
       footer1: "Open source project, not affiliated with Nike or TomTom.",
       footer2: "Built with",
       // dynamic
@@ -67,6 +67,20 @@
       gpx: "GPX", csv: "Speed CSV",
       legend: (max) => `max ${max}`,
       noSpeed: "no speed data",
+      toolsTitle: "The watch",
+      toolsIntro: "Battery level and clock. Reading changes nothing on the watch.",
+      toolsRead: "Read battery and clock",
+      battery: "Battery", watchClock2: "Watch clock", computerClock: "This computer",
+      batteryValue: (lvl, charging) => `${lvl} %${charging ? " (charging)" : ""}`,
+      batteryUnknown: "no valid reading",
+      driftOk: "The watch clock is right (within a minute).",
+      driftBad: (d) => `The watch clock is off by ${d}. New runs will be dated wrong: set it to this computer's time.`,
+      toolsSet: "Set the watch to this computer's time",
+      toolsReading: "Reading the watch…",
+      toolsSetting: "Setting the clock…",
+      toolsSetOk: "Clock set. It now matches this computer.",
+      toolsSetFail: "The watch did not take the new time (its clock still differs). Nothing else was changed.",
+      tcx: "TCX",
       eraseTitle: "Empty the watch (experimental)",
       eraseIntro: "Once its memory is full, the watch may stop recording. This erases every run stored on the watch, as Nike+ Connect used to after each sync. It cannot be undone.",
       eraseExperimental: "Experimental: the erase command has not been confirmed on a real watch yet. If the watch refuses it, nothing is lost.",
@@ -121,7 +135,7 @@
       faq4q: "Il manque le cardio et les pas",
       faq4a: "Ces formats ne sont pas encore décodés : aucune ceinture cardio ni capteur de foulée n'était appairé sur la montre qui a servi à créer cet outil. Si vous avez des sorties avec, contactez-nous sur GitHub.",
       faq5q: "Est-ce sans risque pour la montre ?",
-      faq5a: "Oui : la page n'envoie que la commande de lecture des sorties. Rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez.",
+      faq5a: "Oui : la lecture n'envoie que la commande de lecture, rien n'est effacé ni écrit, et vous pouvez lire la montre autant de fois que vous voulez. Seules deux actions écrivent dans la montre, et seulement quand vous cliquez dessus : le réglage de son horloge, et son vidage (après une sauvegarde).",
       footer1: "Projet open source, sans lien avec Nike ou TomTom.",
       footer2: "Réalisé avec",
       sConnecting: "Connexion à la montre…",
@@ -149,6 +163,20 @@
       gpx: "GPX", csv: "CSV vitesse",
       legend: (max) => `max ${max}`,
       noSpeed: "pas de données de vitesse",
+      toolsTitle: "La montre",
+      toolsIntro: "Niveau de batterie et horloge. La lecture ne modifie rien sur la montre.",
+      toolsRead: "Lire la batterie et l'heure",
+      battery: "Batterie", watchClock2: "Horloge de la montre", computerClock: "Cet ordinateur",
+      batteryValue: (lvl, charging) => `${lvl} %${charging ? " (en charge)" : ""}`,
+      batteryUnknown: "pas de mesure valable",
+      driftOk: "L'horloge de la montre est à l'heure (à moins d'une minute près).",
+      driftBad: (d) => `L'horloge de la montre est décalée de ${d}. Les prochaines sorties seront mal datées : réglez-la sur l'heure de cet ordinateur.`,
+      toolsSet: "Régler la montre sur l'heure de cet ordinateur",
+      toolsReading: "Lecture de la montre…",
+      toolsSetting: "Réglage de l'horloge…",
+      toolsSetOk: "Horloge réglée : elle correspond maintenant à cet ordinateur.",
+      toolsSetFail: "La montre n'a pas pris la nouvelle heure (son horloge est toujours décalée). Rien d'autre n'a été modifié.",
+      tcx: "TCX",
       eraseTitle: "Vider la montre (expérimental)",
       eraseIntro: "Une fois sa mémoire pleine, la montre peut cesser d'enregistrer. Ceci efface toutes les sorties enregistrées sur la montre, comme le faisait Nike+ Connect après chaque synchronisation. C'est irréversible.",
       eraseExperimental: "Expérimental : la commande d'effacement n'a pas encore été confirmée sur une vraie montre. Si la montre la refuse, rien n'est perdu.",
@@ -410,6 +438,7 @@
       if (!badges.children.length) badges.remove();
       const actions = li.querySelector(".run-actions");
       if (r.track.length) actions.append(fileButton(t("gpx"), () => download(D.fileStem(r) + ".gpx", D.toGpx(r), "application/gpx+xml")));
+      if (r.track.length || r.samples.length) actions.append(fileButton(t("tcx"), () => download(D.fileStem(r) + ".tcx", D.toTcx(r), "application/vnd.garmin.tcx+xml")));
       if (r.samples.length) actions.append(fileButton(t("csv"), () => download(D.fileStem(r) + ".csv", D.toCsv(r), "text/csv")));
       const select = () => { state.selected = i; renderRuns(); };
       li.addEventListener("click", (e) => { if (!e.target.closest("button")) select(); });
@@ -506,6 +535,7 @@
       const zip = new JSZip();
       for (const r of runs) {
         if (r.track.length) zip.file("gpx/" + D.fileStem(r) + ".gpx", D.toGpx(r));
+        if (r.track.length || r.samples.length) zip.file("tcx/" + D.fileStem(r) + ".tcx", D.toTcx(r));
         if (r.samples.length) zip.file("csv/" + D.fileStem(r) + ".csv", D.toCsv(r));
       }
       if (withRaw && state.packets) zip.file("raw/watch.packets", D.serializePackets(state.packets));
@@ -515,6 +545,90 @@
       if (withRaw && state.packets) download("watch.packets", new Blob([D.serializePackets(state.packets)]));
     }
   }
+
+  // ── Battery and clock ──────────────────────────────────────────────────────
+
+  /** This computer's time zone, in the watch's terms: standard GMT offset (s) + DST (min). */
+  function localClockSettings(now = new Date()) {
+    const year = now.getFullYear();
+    const east = (d) => -d.getTimezoneOffset(); // minutes east of UTC
+    const standard = Math.min(east(new Date(year, 0, 1)), east(new Date(year, 6, 1)));
+    return { time: Math.floor(now.getTime() / 1000), gmtOffset: standard * 60, dstOffset: east(now) - standard };
+  }
+
+  /** The watch's local time, as epoch-like seconds, for the drift check and display. */
+  const watchLocalSeconds = (c) => c.time + c.gmtOffset + c.dstOffset * 60;
+
+  function fmtDrift(seconds) {
+    const s = Math.abs(Math.round(seconds));
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    const parts = [];
+    if (d) parts.push(`${d} ${lang === "fr" ? "j" : "d"}`);
+    if (h) parts.push(`${h} h`);
+    if (m || !parts.length) parts.push(`${m} min`);
+    return parts.join(" ");
+  }
+
+  function toolsStatus(text, kind) {
+    const box = $("tools-status");
+    box.hidden = !text;
+    box.className = "tools-status" + (kind ? " " + kind : "");
+    box.replaceChildren(...[].concat(text || []).map((m) => { const p = document.createElement("p"); p.textContent = m; return p; }));
+    if (kind === "bad") box.append(reportParagraph());
+  }
+
+  function showClock(battery, clock) {
+    $("tools-info").hidden = false;
+    $("tools-battery").textContent = battery && battery.valid ? t("batteryValue", battery.level, battery.charging) : t("batteryUnknown");
+    const fmt = new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "medium", timeZone: "UTC" });
+    const local = localClockSettings();
+    $("tools-clock").textContent = fmt.format(new Date(watchLocalSeconds(clock) * 1000));
+    $("tools-computer").textContent = fmt.format(new Date(watchLocalSeconds(local) * 1000));
+    const drift = watchLocalSeconds(clock) - watchLocalSeconds(local);
+    const off = Math.abs(drift) > 60;
+    $("tools-drift").textContent = off ? t("driftBad", fmtDrift(drift)) : t("driftOk");
+    $("tools-drift").className = "note" + (off ? " bad" : "");
+    $("tools-set-row").hidden = !off;
+    return off;
+  }
+
+  async function withWatch(fn) {
+    if (busy) return;
+    busy = true;
+    for (const id of ["connect", "tools-read", "tools-set"]) $(id).disabled = true;
+    let watch = null;
+    try {
+      watch = await W.connect();
+      await fn(watch);
+    } catch (err) {
+      console.error(err);
+      log(`tools exception: ${err && err.name}: ${err && (err.code || err.message)}`);
+      toolsStatus(explain(err), "bad");
+    } finally {
+      if (watch) { await watch.close(); log("device closed"); }
+      busy = false;
+      for (const id of ["connect", "tools-read", "tools-set"]) $(id).disabled = !W.supported();
+    }
+  }
+
+  const readTools = () => withWatch(async (watch) => {
+    toolsStatus(t("toolsReading"));
+    const battery = await watch.battery();
+    const clock = await watch.getTime();
+    log(`battery ${JSON.stringify(battery)}, clock ${JSON.stringify(clock)} (${new Date(clock.time * 1000).toISOString()} UTC)`);
+    toolsStatus(null);
+    showClock(battery, clock);
+  });
+
+  const setClock = () => withWatch(async (watch) => {
+    toolsStatus(t("toolsSetting"));
+    await watch.setTime(localClockSettings());
+    const clock = await watch.getTime();
+    log(`clock after setting: ${JSON.stringify(clock)} (${new Date(clock.time * 1000).toISOString()} UTC)`);
+    const battery = await watch.battery();
+    const stillOff = showClock(battery, clock);
+    toolsStatus(stillOff ? t("toolsSetFail") : t("toolsSetOk"), stillOff ? "bad" : "ok");
+  });
 
   // ── Erasing the watch ──────────────────────────────────────────────────────
 
@@ -610,6 +724,8 @@
   });
   $("erase-confirm").addEventListener("input", () => { $("erase-go").disabled = !(state.backupDone && confirmOk() && !busy); });
   $("erase-go").addEventListener("click", eraseWatch);
+  $("tools-read").addEventListener("click", readTools);
+  $("tools-set").addEventListener("click", setClock);
   $("download-raw").addEventListener("click", () => {
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     download(`nike_watch_${stamp}.packets`, new Blob([D.serializePackets(state.packets)]));
@@ -625,6 +741,6 @@
   });
   window.addEventListener("resize", () => { if (state.runs && state.runs.length) drawChart(state.runs[state.selected]); });
 
-  if (!W.supported()) { $("connect").disabled = true; $("unsupported").hidden = false; }
+  if (!W.supported()) { $("connect").disabled = true; $("unsupported").hidden = false; $("tools").hidden = true; }
   applyLang();
 })();

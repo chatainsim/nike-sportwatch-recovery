@@ -68,6 +68,24 @@
     </div>
   </section>
 
+  <section id="tools" class="card tools">
+    <h2 data-i18n="toolsTitle">The watch</h2>
+    <p class="note" data-i18n="toolsIntro">Battery level and clock. Reading changes nothing on the watch.</p>
+    <div class="actions">
+      <button id="tools-read" class="btn ghost" type="button" data-i18n="toolsRead">Read battery and clock</button>
+    </div>
+    <dl id="tools-info" class="tools-info" hidden>
+      <div><dt data-i18n="battery">Battery</dt><dd id="tools-battery"></dd></div>
+      <div><dt data-i18n="watchClock2">Watch clock</dt><dd id="tools-clock"></dd></div>
+      <div><dt data-i18n="computerClock">This computer</dt><dd id="tools-computer"></dd></div>
+    </dl>
+    <p id="tools-drift" class="note"></p>
+    <div class="actions" id="tools-set-row" hidden>
+      <button id="tools-set" class="btn primary" type="button" data-i18n="toolsSet">Set the watch to this computer's time</button>
+    </div>
+    <div id="tools-status" class="tools-status" hidden aria-live="polite"></div>
+  </section>
+
   <section id="results" hidden>
     <div class="results-head">
       <h2 id="results-title"></h2>
@@ -121,7 +139,7 @@
     <details><summary data-i18n="faq2q">Which browsers work?</summary><p data-i18n="faq2a">Chrome, Edge, Opera and other Chromium-based browsers on a computer (Windows, macOS, Linux). Firefox and Safari do not support talking to USB devices from a web page.</p></details>
     <details><summary data-i18n="faq3q">The date of a run looks wrong</summary><p data-i18n="faq3a">The watch clock can drift or be wrong. For runs with GPS, the date comes from the GPS and is reliable; without GPS, only the watch clock is available.</p></details>
     <details><summary data-i18n="faq4q">Heart rate and steps are missing</summary><p data-i18n="faq4a">Those formats are not decoded yet: no heart-rate strap or foot pod was paired on the watch used to build this tool. If you have runs with them, please get in touch on GitHub.</p></details>
-    <details><summary data-i18n="faq5q">Is it safe for the watch?</summary><p data-i18n="faq5a">Yes: the page only sends the command that reads the runs. Nothing is erased or written, and you can read the watch as often as you like.</p></details>
+    <details><summary data-i18n="faq5q">Is it safe for the watch?</summary><p data-i18n="faq5a">Yes: reading only sends the read command, nothing is erased or written, and you can read the watch as often as you like. Only two actions write to the watch, and only when you click them: setting its clock, and emptying it (after a backup).</p></details>
   </section>
 </main>
 

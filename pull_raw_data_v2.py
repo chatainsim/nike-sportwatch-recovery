@@ -177,7 +177,8 @@ def save_packets(path: str, packets: list[bytes]) -> None:
 
 
 def load_packets(path: str) -> list[bytes]:
-    raw = open(path, "rb").read()
+    with open(path, "rb") as f:
+        raw = f.read()
     packets, pos = [], 0
     while pos + 2 <= len(raw):
         (length,) = struct.unpack_from("<H", raw, pos)

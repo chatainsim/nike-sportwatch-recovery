@@ -37,8 +37,15 @@ sur son dock, cliquez sur **Connecter la montre**, et téléchargez vos
 sorties. Rien à installer, et rien n'est envoyé : la montre est lue et
 décodée dans l'onglet du navigateur (seuls les fonds de carte viennent
 d'OpenStreetMap). La page liste chaque sortie avec sa carte, sa distance, sa
-durée, son allure, ses calories et sa courbe de vitesse, et exporte les GPX
-et les CSV de vitesse, un par un ou tous d'un coup.
+durée, son allure, ses calories et sa courbe de vitesse, et exporte les
+fichiers GPX, TCX (avec distance, calories et vitesse : le meilleur format
+pour Strava et Garmin Connect) et CSV de vitesse, un par un ou tous d'un
+coup.
+
+Une carte **« La montre »** lit le niveau de batterie et l'horloge de la
+montre, et peut régler l'horloge sur l'heure de l'ordinateur : une horloge
+fausse date mal les nouvelles sorties (expérimental : confirmé pour
+l'instant uniquement sur une montre simulée).
 
 Après une lecture complète et vérifiée, la page peut aussi **vider la
 montre** (expérimental : la commande d'effacement n'a pas encore été
@@ -60,9 +67,10 @@ donne des résultats identiques sur les mêmes données.
 - **Ne branchez pas la montre sur Nike+ Connect.** Ce logiciel efface la
   mémoire de la montre une fois qu'il l'a « envoyée », vers des serveurs qui
   n'existent plus.
-- Ces outils sont **en lecture seule** : ils n'envoient que les commandes
-  version, eeprom-query et lecture des sorties. Rien n'est effacé ni modifié
-  sur la montre, et on peut les relancer autant qu'on veut.
+- **La lecture ne modifie rien** : rien n'est effacé ni modifié sur la
+  montre, et on peut la lire autant qu'on veut. Seules deux actions écrivent
+  dans la montre, et uniquement quand vous les demandez explicitement : le
+  réglage de son horloge, et son vidage (après une sauvegarde vérifiée).
 - Les fichiers produits contiennent **les positions GPS exactes de vos
   sorties** (qui partent souvent de chez vous). Réfléchissez avant de les
   partager publiquement.
@@ -73,17 +81,22 @@ Prérequis : Python 3.9 ou plus récent, et la montre avec son dock USB.
 
     pip install hidapi
     python pull_raw_data_v2.py
-    python decode_gps.py nike_v2_stream_1_<horodatage>.packets gpx/
-    python decode_telemetry.py nike_v2_stream_1_<horodatage>.packets sessions/sortie
+    python export_runs.py nike_v2_stream_1_<horodatage>.packets sorties/
 
 1. `pull_raw_data_v2.py` lit la montre deux fois et vérifie que les deux
    lectures sont identiques (« IDENTICAL: this read method is reliable. »).
    Il écrit `nike_v2_stream_1_<horodatage>.packets` et
    `nike_v2_stream_2_...`.
-2. `decode_gps.py` écrit un fichier GPX par sortie dans `gpx/`, nommé d'après
-   son heure de départ en UTC : `gpx/nike_AAAA-MM-JJ_HHhMM.gpx`.
-3. `decode_telemetry.py` affiche un résumé par sortie et écrit
-   `sessions/sortie_session<N>.csv` (heure, vitesse en m/s, allure en min/km).
+2. `export_runs.py` écrit, pour chaque sortie,
+   `sorties/nike_AAAA-MM-JJ_HHhMM.gpx`, `.tcx` et `.csv` (heure de départ en
+   UTC) : les mêmes fichiers que l'appli web, octet pour octet.
+   `decode_gps.py` (GPX seul) et `decode_telemetry.py` (résumé et CSV seuls)
+   restent disponibles séparément.
+
+Batterie et horloge de la montre :
+
+    python watch_tools.py              # niveau de batterie et horloge (lecture seule)
+    python watch_tools.py --set-time   # régler l'horloge sur l'heure de cet ordinateur
 
 **Linux / macOS** : non testés. `hidapi` doit avoir accès au périphérique
 USB ; sous Linux, il faut en général lancer le script en root ou ajouter une
@@ -154,6 +167,16 @@ méthode du mémoire de recherche de 2014 cité plus bas). Demander un paquet
 à la fois avec un offset n'est pas fiable : la montre attend l'adresse en
 big-endian dans les octets 4 à 6, et répond à chaque requête par plus d'un
 paquet.
+
+| `0x13` | `battery` | niveau de batterie ; réponse `[niveau][Y en charge / N sinon]` |
+| `0x21` | `time` | sans paramètre : lit l'horloge ; avec : la règle. Données `[heure Unix UTC u32][décalage GMT s, i32][heure d'été min, u8]`, big-endian |
+| `0x11` | `eeprom-erase` | efface toutes les sorties ; valeur de garde 16 bits `EE 86` (expérimental) |
+
+Les formats de la batterie et de l'horloge viennent des fonctions de
+décodage officielles de `SportWatchPlugin.dll`, dans Nike+ Connect
+(`completeBattery`, `completeTime`). La montre traite les commandes l'une
+après l'autre et peut encore être en train d'envoyer des données quand une
+nouvelle arrive : les réponses sont reconnues à leur identifiant (txid).
 
 ### Blocs de données
 
@@ -236,9 +259,25 @@ encore la montre, relisez-la plutôt avec `pull_raw_data_v2.py`.
 | `pull_raw_data_v2.py` | lit la montre par USB, enregistre les paquets bruts |
 | `decode_gps.py` | blocs GPS → GPX, un fichier par sortie |
 | `decode_telemetry.py` | télémétrie → résumé + CSV vitesse/allure par seconde |
+| `export_runs.py` | toutes les sorties → GPX, TCX et CSV de vitesse (mêmes fichiers que l'appli web) |
+| `watch_tools.py` | niveau de batterie, horloge de la montre, `--set-time` |
+| `tests/` | tests sur données synthétiques (Python et JavaScript), lancés à chaque envoi |
 | `extract_blocks.py` | découpe un flux en blocs validés par CRC (aussi outil de diagnostic) |
 | `reconstruct_v1_dump.py` | reconstitue la mémoire à partir d'un ancien dump paquet par paquet |
 | `REFERENCE_RUN.fr.md` | comment valider les décodeurs sur une autre montre ou un autre firmware |
+
+## Tests
+
+    python -m unittest discover -s tests -v
+
+Les tests fabriquent une mémoire de montre inventée (`tests/synthetic.py` :
+les décodeurs à l'envers, autour d'un lieu public, jamais de vraies
+données) et vérifient que le décodage la restitue exactement, que la
+lecture résiste aux paquets désordonnés ou en double, qu'un ancien dump
+paquet par paquet peut être reconstitué, et que les outils Python et l'appli
+web produisent des fichiers GPX, TCX et CSV identiques octet pour octet
+(Node.js requis). Ils tournent à chaque envoi (GitHub Actions), avec
+validation des fichiers TCX par le schéma de Garmin.
 
 ## Crédits
 

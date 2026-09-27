@@ -5,3 +5,5 @@ __pycache__/
 *.bin
 gpx/
 sessions/
+runs/
+sorties/

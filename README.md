@@ -34,7 +34,13 @@ dock, click **Connect the watch**, and download your runs. Nothing to
 install, and nothing is uploaded: the watch is read and decoded inside your
 browser tab (only map backgrounds come from OpenStreetMap). The page lists
 each run with its map, distance, duration, pace, calories and speed chart,
-and exports GPX files and speed CSVs, one by one or all at once.
+and exports GPX, TCX (distance, calories and speed included — the best
+format for Strava and Garmin Connect) and speed CSV files, one by one or all
+at once.
+
+A **"The watch"** card reads the battery level and the watch clock, and can
+set the clock to the computer's time: a wrong clock dates new runs wrongly
+(experimental: confirmed so far against a simulated watch only).
 
 After a complete, verified read, the page can also **empty the watch**
 (experimental: the erase command has not been confirmed on a real watch yet).
@@ -55,9 +61,10 @@ gives identical results on the same data.
 - **Do not connect the watch to Nike+ Connect.** That software erases the
   watch memory once it has "uploaded" it, and the servers it uploads to are
   gone.
-- These tools are **read-only**: they only send the version, eeprom-query and
-  read-workouts commands. Nothing on the watch is erased or modified, and you
-  can run them as often as you like.
+- **Reading is read-only**: nothing on the watch is erased or modified, and
+  you can read it as often as you like. Only two actions write to the watch,
+  and only when you explicitly ask for them: setting its clock, and emptying
+  it (after a verified backup).
 - The files they produce contain **the exact GPS locations of your runs**
   (often starting from home). Think twice before sharing them publicly.
 
@@ -67,16 +74,20 @@ Requirements: Python 3.9 or later, and the watch with its USB dock.
 
     pip install hidapi
     python pull_raw_data_v2.py
-    python decode_gps.py nike_v2_stream_1_<timestamp>.packets gpx/
-    python decode_telemetry.py nike_v2_stream_1_<timestamp>.packets sessions/run
+    python export_runs.py nike_v2_stream_1_<timestamp>.packets runs/
 
 1. `pull_raw_data_v2.py` reads the watch twice and checks that both reads are
    identical ("IDENTICAL: this read method is reliable."). It writes
    `nike_v2_stream_1_<timestamp>.packets` and `nike_v2_stream_2_...`.
-2. `decode_gps.py` writes one GPX file per run into `gpx/`, named after its
-   start time in UTC: `gpx/nike_YYYY-MM-DD_HHhMM.gpx`.
-3. `decode_telemetry.py` prints a summary per run and writes
-   `sessions/run_session<N>.csv` (time, speed in m/s, pace in min/km).
+2. `export_runs.py` writes, for each run, `runs/nike_YYYY-MM-DD_HHhMM.gpx`,
+   `.tcx` and `.csv` (start time in UTC) — the same files as the web app,
+   byte for byte. `decode_gps.py` (GPX only) and `decode_telemetry.py`
+   (summary and CSV only) are still available on their own.
+
+The watch's battery and clock:
+
+    python watch_tools.py              # battery level and clock (read-only)
+    python watch_tools.py --set-time   # set the clock to this computer's time
 
 **Linux / macOS**: not tested. `hidapi` needs access to the USB device; on
 Linux this usually means running as root or adding a udev rule for vendor
@@ -143,6 +154,15 @@ whatever the watch streams until it goes quiet ("stream" mode, the method of
 the 2014 research paper credited below). Requesting one packet at a time
 with an offset is unreliable: the watch expects the address big-endian in
 bytes 4-6, and answers each request with more than one packet.
+
+| `0x13` | `battery` | battery level; reply payload `[level][Y charging / N not]` |
+| `0x21` | `time` | without arguments: read the clock; with them: set it. Payload `[Unix time UTC u32][GMT offset s, i32][DST min, u8]`, big-endian |
+| `0x11` | `eeprom-erase` | erase all runs; 16-bit guard value `EE 86` (experimental) |
+
+The battery and clock formats come from the official parsers in Nike+
+Connect's `SportWatchPlugin.dll` (`completeBattery`, `completeTime`). The
+watch handles commands one after the other and may still be streaming when a
+new one arrives: replies are matched on their txid.
 
 ### Data blocks
 
@@ -221,9 +241,24 @@ read it again with `pull_raw_data_v2.py` instead.
 | `pull_raw_data_v2.py` | reads the watch over USB, saves raw packets |
 | `decode_gps.py` | GPS blocks → GPX, one file per run |
 | `decode_telemetry.py` | telemetry → summary + per-second speed/pace CSV |
+| `export_runs.py` | all runs → GPX, TCX and speed CSV (same files as the web app) |
+| `watch_tools.py` | battery level, watch clock, `--set-time` |
+| `tests/` | tests on synthetic data (Python and JavaScript), run on every push |
 | `extract_blocks.py` | splits a data stream into CRC-validated blocks (also a debugging tool) |
 | `reconstruct_v1_dump.py` | rebuilds memory from an old per-packet dump |
 | `REFERENCE_RUN.md` | how to validate the decoders on another watch or firmware |
+
+## Tests
+
+    python -m unittest discover -s tests -v
+
+The tests build a made-up watch memory (`tests/synthetic.py`: the decoders
+run backwards, around a public place — never real user data) and check
+that decoding gives it back exactly, that reads cope with out-of-order and
+duplicated packets, that an old per-packet dump can be rebuilt, and that
+the Python tools and the web app produce byte-identical GPX, TCX and CSV
+files (needs Node.js). They run on every push (GitHub Actions), including
+validation of the TCX files against Garmin's schema.
 
 ## Credits
 

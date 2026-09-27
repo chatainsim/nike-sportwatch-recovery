@@ -1,0 +1,24 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install lxml (TCX schema validation)
+        run: pip install lxml
+      - name: Fetch Garmin's TCX schema
+        # Optional: the schema test is skipped if the download fails.
+        run: curl -fsSL -o /tmp/tcx.xsd https://www8.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd && echo "TCX_XSD=/tmp/tcx.xsd" >> "$GITHUB_ENV" || true
+      - name: Decoder tests (synthetic data, Python and JavaScript)
+        run: python -m unittest discover -s tests -v

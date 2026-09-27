@@ -24,6 +24,12 @@
   const ERASE_TXID = 0x45;
   const ERASE_MAGIC = [0xee, 0x86];
   const ERASE_TIMEOUT_MS = 30000;
+  // Formats from the official parsers (SportWatchPlugin.dll completeBattery /
+  // completeTime); payload = the bytes after the txid echo.
+  const OPCODE_BATTERY = 0x13;   // payload: [level %][ 'Y' charging | 'N' not ]
+  const OPCODE_TIME = 0x21;      // payload: [unix time u32 BE][GMT offset s i32 BE][DST min u8]
+  const BATTERY_TXID = 0x31, TIME_GET_TXID = 0x32, TIME_SET_TXID = 0x33;
+  const COMMAND_TIMEOUT_MS = 15000;
   const STREAM_IDLE_MS = 2500;
   const MAX_PACKETS = 40000; // ~2.2 MB, far above what the watch holds
 
@@ -203,6 +209,61 @@
       } finally {
         this.verbose = true;
       }
+    }
+
+    /**
+     * Sends a command and waits for the packet echoing its txid (the watch
+     * may still be busy streaming; other packets are skipped). Returns the
+     * reply payload (bytes after the txid), or throws "timeout".
+     */
+    async command(packet, what) {
+      const txid = packet[2];
+      this.verbose = false;
+      await this.send(packet);
+      const deadline = Date.now() + COMMAND_TIMEOUT_MS;
+      let skipped = 0;
+      try {
+        while (Date.now() < deadline) {
+          const r = await this.next(deadline - Date.now());
+          if (!r) break;
+          if (r[2] === txid) {
+            const len = r[1];
+            const payload = r.subarray(3, Math.min(r.length - 1, 2 + len));
+            log(`${what} reply (${skipped} other packet(s) skipped): ${hex(r, 16)} → payload ${hex(payload, payload.length)}`);
+            return payload;
+          }
+          skipped += 1;
+        }
+      } finally {
+        this.verbose = true;
+      }
+      log(`no ${what} reply within ${COMMAND_TIMEOUT_MS / 1000} s`);
+      throw new WatchError("timeout");
+    }
+
+    async battery() {
+      const p = await this.command(command(OPCODE_BATTERY, BATTERY_TXID), "battery");
+      const flag = p.length > 1 ? String.fromCharCode(p[1]).toUpperCase() : "";
+      const valid = flag === "Y" || flag === "N";
+      return { valid, level: valid ? p[0] : null, charging: flag === "Y" };
+    }
+
+    async getTime() {
+      const p = await this.command(command(OPCODE_TIME, TIME_GET_TXID), "time");
+      if (p.length < 9) throw new WatchError("format");
+      const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+      return { time: dv.getUint32(0), gmtOffset: dv.getInt32(4), dstOffset: p[8] };
+    }
+
+    /** Sets the clock (UTC seconds, GMT offset in s, DST offset in min). */
+    async setTime({ time, gmtOffset, dstOffset }) {
+      const p = command(OPCODE_TIME, TIME_SET_TXID, 0x0b); // length: txid + opcode + 9 bytes
+      const dv = new DataView(p.buffer);
+      dv.setUint32(4, time >>> 0);
+      dv.setInt32(8, gmtOffset | 0);
+      p[12] = dstOffset & 0xff;
+      log(`set time: ${new Date(time * 1000).toISOString()}, GMT offset ${gmtOffset} s, DST ${dstOffset} min`);
+      return this.command(p, "set-time");
     }
 
     async close() {

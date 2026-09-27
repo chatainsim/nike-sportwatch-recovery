@@ -149,6 +149,19 @@ main { padding-block: 24px 8px; display: grid; gap: 24px; }
 .erase-status.bad { background: var(--err-bg); border-color: var(--err-line); }
 .erase-status p { margin: 4px 0; }
 
+.tools { padding: 20px 24px; }
+.tools h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.tools .note { margin: 0 0 12px; }
+.tools-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 20px; margin: 14px 0 0; }
+.tools-info dt { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tools-info dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+#tools-drift { margin-top: 10px; }
+#tools-drift.bad { color: var(--danger); font-weight: 600; }
+.tools-status { margin-top: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.tools-status.ok { border-color: var(--ok); }
+.tools-status.bad { background: var(--err-bg); border-color: var(--err-line); }
+.tools-status p { margin: 4px 0; }
+
 .faq { padding: 20px 24px; }
 .faq h2 { margin: 0 0 8px; font-size: 1.2rem; }
 .faq details { border-top: 1px solid var(--line); padding: 10px 0; }

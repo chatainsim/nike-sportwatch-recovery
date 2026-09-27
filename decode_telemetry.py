@@ -107,6 +107,17 @@ def fmt_pace(speed_ms: float) -> str:
     return f"{int(s // 60)}:{int(s % 60):02d}"
 
 
+def write_csv(session: dict, path: str) -> None:
+    """Per-second speed and pace of one recording."""
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["time_utc", "speed_m_s", "pace_min_km"])
+        for t, v in session["samples"]:
+            ok = usable(v)
+            w.writerow([datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        f"{v / 10:.1f}" if ok else "", fmt_pace(v / 10) if ok else ""])
+
+
 def main() -> None:
     if not 2 <= len(sys.argv) <= 3:
         print(f"Usage: {sys.argv[0]} <dump.packets|memory.bin> [out_prefix]")
@@ -130,13 +141,7 @@ def main() -> None:
         print("  markers: " + ", ".join(
             f"{kind} {datetime.fromtimestamp(t, timezone.utc):%H:%M:%S}" for kind, t in s["markers"]))
         path = f"{prefix}_session{n}.csv"
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["time_utc", "speed_m_s", "pace_min_km"])
-            for t, v in s["samples"]:
-                ok = usable(v)
-                w.writerow([datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                            f"{v / 10:.1f}" if ok else "", fmt_pace(v / 10) if ok else ""])
+        write_csv(s, path)
         print(f"  -> {path}")
 
 

@@ -260,12 +260,14 @@
 
   // ── Exports ────────────────────────────────────────────────────────────────
 
+  /** One decimal, halves rounded up (same as export_runs.py fmt1). */
+  const fmt1 = (v) => (Math.floor(v * 10 + 0.5) / 10).toFixed(1);
   const iso = (t) => new Date(t * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 
   function toGpx(run) {
     const name = "Nike+ SportWatch " + iso(run.start).slice(0, 16).replace("T", " ") + " UTC";
     const pts = run.track.map((p) =>
-      `    <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><ele>${p.alt.toFixed(1)}</ele><time>${iso(p.t)}</time></trkpt>`);
+      `    <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><ele>${fmt1(p.alt)}</ele><time>${iso(p.t)}</time></trkpt>`);
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<gpx version="1.1" creator="nike-sportwatch-recovery" xmlns="http://www.topografix.com/GPX/1/1">',
@@ -273,6 +275,70 @@
       ...pts,
       "  </trkseg></trk>",
       "</gpx>",
+      "",
+    ].join("\n");
+  }
+
+  const xmlEscape = (v) => String(v).replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[c]));
+
+  /**
+   * Garmin Training Center (TCX) export: unlike GPX it carries the total
+   * distance, duration, calories and per-second speed, which Strava and
+   * Garmin Connect import. Positions come from the GPS track; runs without
+   * GPS get a distance integrated from the speed samples.
+   */
+  function toTcx(run) {
+    const bySecond = new Map();
+    for (const s of run.samples) if (usableSpeed(s.speed)) bySecond.set(s.t, s.speed / 10);
+    const points = [];
+    if (run.track.length) {
+      let dist = 0;
+      run.track.forEach((p, i) => {
+        if (i) dist += haversine(run.track[i - 1], p);
+        points.push({ t: p.t, lat: p.lat, lon: p.lon, alt: p.alt, dist, speed: null });
+      });
+      // Watch-clock and GPS times can differ: attach speeds by position in time
+      // only when both clocks agree on the start.
+      const offset = run.samples.length ? run.samples[0].t - run.track[0].t : null;
+      if (offset !== null && Math.abs(offset) <= 5) for (const p of points) p.speed = bySecond.get(p.t + offset) ?? null;
+    } else {
+      let dist = 0;
+      for (const s of run.samples) {
+        const v = usableSpeed(s.speed) ? s.speed / 10 : null;
+        if (v) dist += v;
+        points.push({ t: s.t, lat: null, lon: null, alt: null, dist, speed: v });
+      }
+    }
+    const total = run.distance != null ? run.distance : points.length ? points[points.length - 1].dist : 0;
+    const trackpoints = points.map((p) => [
+      "          <Trackpoint>",
+      `            <Time>${iso(p.t)}</Time>`,
+      p.lat != null ? `            <Position><LatitudeDegrees>${p.lat.toFixed(7)}</LatitudeDegrees><LongitudeDegrees>${p.lon.toFixed(7)}</LongitudeDegrees></Position>` : null,
+      p.alt != null ? `            <AltitudeMeters>${fmt1(p.alt)}</AltitudeMeters>` : null,
+      `            <DistanceMeters>${fmt1(p.dist)}</DistanceMeters>`,
+      p.speed != null ? `            <Extensions><TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Speed>${fmt1(p.speed)}</Speed></TPX></Extensions>` : null,
+      "          </Trackpoint>",
+    ].filter(Boolean).join("\n"));
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd">',
+      "  <Activities>",
+      '    <Activity Sport="Running">',
+      `      <Id>${iso(run.start)}</Id>`,
+      `      <Lap StartTime="${iso(run.start)}">`,
+      `        <TotalTimeSeconds>${fmt1(run.duration || 0)}</TotalTimeSeconds>`,
+      `        <DistanceMeters>${fmt1(total)}</DistanceMeters>`,
+      `        <Calories>${run.calories != null ? run.calories : 0}</Calories>`,
+      "        <Intensity>Active</Intensity>",
+      "        <TriggerMethod>Manual</TriggerMethod>",
+      "        <Track>",
+      ...trackpoints,
+      "        </Track>",
+      "      </Lap>",
+      `      <Notes>${xmlEscape("Recovered from a Nike+ SportWatch GPS")}</Notes>`,
+      "    </Activity>",
+      "  </Activities>",
+      "</TrainingCenterDatabase>",
       "",
     ].join("\n");
   }
@@ -287,7 +353,7 @@
     const lines = ["time_utc,speed_m_s,pace_min_km"];
     for (const s of run.samples) {
       const ok = usableSpeed(s.speed);
-      lines.push(`${iso(s.t)},${ok ? (s.speed / 10).toFixed(1) : ""},${ok ? paceString(s.speed / 10) : ""}`);
+      lines.push(`${iso(s.t)},${ok ? fmt1(s.speed / 10) : ""},${ok ? paceString(s.speed / 10) : ""}`);
     }
     return lines.join("\n") + "\n";
   }
@@ -300,6 +366,6 @@
   return {
     packetPayload, payloadStream, parsePacketsFile, serializePackets,
     crc16, findBlocks, decodeTrack, splitTracks, parseTelemetry, decodeRuns,
-    toGpx, toCsv, fileStem, paceString, haversine,
+    toGpx, toTcx, toCsv, fileStem, paceString, haversine,
   };
 });
